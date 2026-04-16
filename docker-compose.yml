@@ -1,0 +1,28 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3030:3000"
+    environment:
+      - POCKETBASE_URL=http://pocketbase:8090
+      - POCKETBASE_USERS_COLLECTION=${POCKETBASE_USERS_COLLECTION:-users}
+      - SESSION_SECRET=${SESSION_SECRET:-change-this-secret}
+      - SITE_PROJECT_ID=${SITE_PROJECT_ID:-}
+    depends_on:
+      - pocketbase
+
+  pocketbase:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        - VERSION=0.34.2
+    ports:
+      - "8090:8090"
+    volumes:
+      - /DATA/monojournal/pocketbase/data:/pb_data
+      # - /DATA/monojournal/pocketbase/public:/pb_public
+      # - /DATA/monojournal/pocketbase/hooks:/pb_hooks
+      # - ./DATA/pocketbase/pb_migrations:/pb_migrations
