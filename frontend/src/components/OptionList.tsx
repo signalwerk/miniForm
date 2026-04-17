@@ -221,7 +221,7 @@ export function OptionList({
         </div>
       ) : null}
 
-      {question.type !== "dropdown" ? (
+      {question.type !== "single_choice" || !question.showAsDropdown ? (
         <label className="checkbox option-list__other-toggle">
           <input
             type="checkbox"

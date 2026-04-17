@@ -18,7 +18,6 @@ export function FormsLibrary({
   onLoad,
 }: FormsLibraryProps) {
   const formatUpdated = (value: string) => {
-    console.log("formatUpdated", value);
     const parsed = Date.parse(value);
     return Number.isNaN(parsed) ? "Recently changed" : new Date(parsed).toLocaleString();
   };

@@ -21,7 +21,10 @@ interface QuestionCardProps {
   onDescriptionChange: (value: string) => void;
   onOtherOptionLabelChange: (value: string) => void;
   onTypeChange: (value: QuestionType) => void;
-  onToggle: (field: "required" | "allowOther" | "routeByAnswer", value: boolean) => void;
+  onToggle: (
+    field: "required" | "multilineText" | "showAsDropdown" | "allowOther" | "routeByAnswer",
+    value: boolean,
+  ) => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onCollapse: () => void;
@@ -68,6 +71,8 @@ export function QuestionCard({
 
   const isInformational = question.type === "title_description";
   const canRouteByAnswer = supportsOptionNavigation(question.type);
+  const isTextQuestion = question.type === "text";
+  const isSingleChoice = question.type === "single_choice";
 
   return (
     <article
@@ -181,6 +186,28 @@ export function QuestionCard({
                     onChange={(event) => onToggle("required", event.target.checked)}
                   />
                   <span>Required</span>
+                </label>
+              ) : null}
+
+              {isTextQuestion ? (
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={question.multilineText}
+                    onChange={(event) => onToggle("multilineText", event.target.checked)}
+                  />
+                  <span>Multiline text</span>
+                </label>
+              ) : null}
+
+              {isSingleChoice ? (
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={question.showAsDropdown}
+                    onChange={(event) => onToggle("showAsDropdown", event.target.checked)}
+                  />
+                  <span>Show as dropdown</span>
                 </label>
               ) : null}
 

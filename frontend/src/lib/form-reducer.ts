@@ -35,7 +35,7 @@ export type FormAction =
       type: "set_question_toggle";
       blockId: string;
       questionId: string;
-      field: "required" | "allowOther" | "routeByAnswer";
+      field: "required" | "multilineText" | "showAsDropdown" | "allowOther" | "routeByAnswer";
       value: boolean;
     }
   | { type: "delete_question"; blockId: string; questionId: string }
@@ -170,15 +170,30 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
                     action.field === "allowOther" && !supportsOptions(question.type)
                       ? false
                       : action.field === "routeByAnswer" &&
-                          !(question.type === "single_choice" || question.type === "dropdown")
+                          question.type !== "single_choice"
+                        ? false
+                        : action.field === "multilineText" && question.type !== "text"
+                          ? false
+                          : action.field === "showAsDropdown" && question.type !== "single_choice"
                         ? false
                         : action.value,
+                  allowOther:
+                    action.field === "showAsDropdown"
+                      ? action.value
+                        ? false
+                        : question.allowOther
+                      : action.field === "allowOther" && !supportsOptions(question.type)
+                        ? false
+                        : action.field === "allowOther"
+                          ? action.value
+                          : question.allowOther,
                   otherOptionLabel:
                     action.field === "allowOther" && action.value && !question.otherOptionLabel
                       ? "Other"
                       : question.otherOptionLabel,
                   otherOptionNavigation:
-                    action.field === "allowOther" && !action.value
+                    (action.field === "allowOther" && !action.value) ||
+                    (action.field === "showAsDropdown" && action.value)
                       ? createNavigationRule()
                       : question.otherOptionNavigation,
                 }

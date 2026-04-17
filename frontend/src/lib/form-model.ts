@@ -18,11 +18,9 @@ const createId = () => {
 
 export const QUESTION_TYPE_OPTIONS: Array<{ value: QuestionType; label: string }> = [
   { value: "title_description", label: "Title & Description" },
-  { value: "short_text", label: "Short text" },
-  { value: "paragraph", label: "Paragraph" },
+  { value: "text", label: "Text" },
   { value: "single_choice", label: "Single choice" },
   { value: "multiple_choice", label: "Multiple choice" },
-  { value: "dropdown", label: "Dropdown" },
 ];
 
 export const NAVIGATION_OPTIONS: Array<{ value: NavigationMode; label: string }> = [
@@ -31,11 +29,9 @@ export const NAVIGATION_OPTIONS: Array<{ value: NavigationMode; label: string }>
   { value: "submit", label: "Submit form" },
 ];
 
-export const supportsOptions = (type: QuestionType) =>
-  type === "single_choice" || type === "multiple_choice" || type === "dropdown";
+export const supportsOptions = (type: QuestionType) => type === "single_choice" || type === "multiple_choice";
 
-export const supportsOptionNavigation = (type: QuestionType) =>
-  type === "single_choice" || type === "dropdown";
+export const supportsOptionNavigation = (type: QuestionType) => type === "single_choice";
 
 export const createNavigationRule = (
   mode: NavigationMode = "next",
@@ -51,20 +47,19 @@ export const createOption = (label = ""): FormOption => ({
   navigation: createNavigationRule(),
 });
 
-export const createQuestion = (type: QuestionType = "short_text"): FormQuestion => ({
+export const createQuestion = (type: QuestionType = "text"): FormQuestion => ({
   id: createId(),
   type,
   title: "",
   description: "",
   required: false,
+  multilineText: false,
+  showAsDropdown: false,
   allowOther: false,
   otherOptionLabel: "Other",
   otherOptionNavigation: createNavigationRule(),
   routeByAnswer: false,
-  options:
-    type === "single_choice" || type === "multiple_choice" || type === "dropdown"
-      ? [createOption(), createOption()]
-      : [],
+  options: type === "single_choice" || type === "multiple_choice" ? [createOption(), createOption()] : [],
   isCollapsed: false,
 });
 
@@ -148,6 +143,8 @@ export const normalizeQuestionType = (
       ...question,
       type: nextType,
       options: [],
+      multilineText: nextType === "text" ? (question.multilineText ?? false) : false,
+      showAsDropdown: false,
       allowOther: false,
       otherOptionNavigation: createNavigationRule(),
       routeByAnswer: false,
@@ -158,15 +155,17 @@ export const normalizeQuestionType = (
   return {
     ...question,
     type: nextType,
+    multilineText: false,
+    showAsDropdown: nextType === "single_choice" ? (question.showAsDropdown ?? false) : false,
     options: question.options.length > 0 ? question.options : [createOption(), createOption()],
     allowOther:
-      nextType === "single_choice" || nextType === "multiple_choice" ? (question.allowOther ?? false) : false,
-    otherOptionNavigation:
-      nextType === "single_choice" || nextType === "dropdown"
-        ? (question.otherOptionNavigation ?? createNavigationRule())
-        : createNavigationRule(),
-    routeByAnswer:
-      nextType === "single_choice" || nextType === "dropdown" ? (question.routeByAnswer ?? false) : false,
+      nextType === "multiple_choice"
+        ? (question.allowOther ?? false)
+        : nextType === "single_choice"
+          ? (question.showAsDropdown ? false : (question.allowOther ?? false))
+          : false,
+    otherOptionNavigation: nextType === "single_choice" ? (question.otherOptionNavigation ?? createNavigationRule()) : createNavigationRule(),
+    routeByAnswer: nextType === "single_choice" ? (question.routeByAnswer ?? false) : false,
   };
 };
 
@@ -185,6 +184,9 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
 
         return {
           ...normalizedQuestion,
+          multilineText: normalizedQuestion.type === "text" ? normalizedQuestion.multilineText ?? false : false,
+          showAsDropdown:
+            normalizedQuestion.type === "single_choice" ? normalizedQuestion.showAsDropdown ?? false : false,
           otherOptionLabel: normalizedQuestion.otherOptionLabel || "Other",
           otherOptionNavigation:
             supportsOptionNavigation(normalizedQuestion.type) && normalizedQuestion.routeByAnswer

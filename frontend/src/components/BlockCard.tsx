@@ -41,7 +41,7 @@ interface BlockCardProps {
   onQuestionTypeChange: (questionId: string, questionType: QuestionType) => void;
   onQuestionToggle: (
     questionId: string,
-    field: "required" | "allowOther" | "routeByAnswer",
+    field: "required" | "multilineText" | "showAsDropdown" | "allowOther" | "routeByAnswer",
     value: boolean,
   ) => void;
   onDeleteQuestion: (questionId: string) => void;
@@ -250,11 +250,8 @@ export function BlockCard({
               >
                 Title & Description
               </button>
-              <button type="button" className="button button--secondary" onClick={() => onAddQuestion("short_text")}>
-                Short text
-              </button>
-              <button type="button" className="button button--secondary" onClick={() => onAddQuestion("paragraph")}>
-                Paragraph
+              <button type="button" className="button button--secondary" onClick={() => onAddQuestion("text")}>
+                Text
               </button>
               <button
                 type="button"
@@ -269,9 +266,6 @@ export function BlockCard({
                 onClick={() => onAddQuestion("multiple_choice")}
               >
                 Multiple choice
-              </button>
-              <button type="button" className="button button--secondary" onClick={() => onAddQuestion("dropdown")}>
-                Dropdown
               </button>
             </div>
           </div>

@@ -9,16 +9,14 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { useEffect, useMemo, useReducer, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from "react-router-dom";
 import { BlockCard } from "./BlockCard";
 import { createForm, validateForm } from "../lib/form-model";
 import { formReducer, getInitialFormState } from "../lib/form-reducer";
 import { getDropIndicator } from "../lib/dnd";
 import { createBlankFormRecord, getForm, saveForm } from "../lib/pocketbase";
-import type { NavigationRule, QuestionType, StoredDraft } from "../lib/types";
-
-const LOCAL_STORAGE_KEY = "mini-form-editor-draft";
+import type { FormDefinition, NavigationRule, QuestionType } from "../lib/types";
 
 const getErrorMessage = (error: unknown) => {
   if (error && typeof error === "object" && "message" in error) {
@@ -28,8 +26,6 @@ const getErrorMessage = (error: unknown) => {
   return "Something went wrong.";
 };
 
-const buildDraftKey = (recordId: string) => `${LOCAL_STORAGE_KEY}:${recordId}`;
-
 export function EditorPage() {
   const navigate = useNavigate();
   const { recordId } = useParams();
@@ -38,10 +34,18 @@ export function EditorPage() {
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [saveMessage, setSaveMessage] = useState("Local autosave is active.");
+  const [saveState, setSaveState] = useState<"idle" | "dirty" | "saving" | "saved" | "error">("idle");
+  const [saveMessage, setSaveMessage] = useState("Autosave to PocketBase is active.");
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const [activeBlockId, setActiveBlockId] = useState<UniqueIdentifier | null>(null);
   const [overBlockId, setOverBlockId] = useState<UniqueIdentifier | null>(null);
+  const saveTimeoutRef = useRef<number | null>(null);
+  const latestFormRef = useRef<FormDefinition>(form);
+  const latestSnapshotRef = useRef(JSON.stringify(form));
+  const lastSavedSnapshotRef = useRef(JSON.stringify(form));
+  const queuedSaveRef = useRef<{ form: FormDefinition; snapshot: string } | null>(null);
+  const isSavingRef = useRef(false);
+  const skipNavigationWarningRef = useRef(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -62,6 +66,56 @@ export function EditorPage() {
   );
 
   const validationIssues = useMemo(() => validateForm(form), [form]);
+  const blocker = useBlocker(() => hasPendingChanges && !skipNavigationWarningRef.current);
+
+  const flushAutosave = async (formToSave: FormDefinition, snapshot: string) => {
+    if (!activeRecordId) {
+      return;
+    }
+
+    if (snapshot === lastSavedSnapshotRef.current) {
+      setHasPendingChanges(false);
+      setSaveState("saved");
+      setSaveMessage("All changes saved to PocketBase.");
+      return;
+    }
+
+    if (isSavingRef.current) {
+      queuedSaveRef.current = { form: formToSave, snapshot };
+      return;
+    }
+
+    isSavingRef.current = true;
+    setSaveState("saving");
+    setSaveMessage("Autosaving to PocketBase...");
+
+    try {
+      const result = await saveForm(formToSave, activeRecordId);
+      setActiveRecordId(result.recordId);
+      lastSavedSnapshotRef.current = snapshot;
+
+      if (queuedSaveRef.current && queuedSaveRef.current.snapshot !== snapshot) {
+        const nextSave = queuedSaveRef.current;
+        queuedSaveRef.current = null;
+        isSavingRef.current = false;
+        await flushAutosave(nextSave.form, nextSave.snapshot);
+        return;
+      }
+
+      queuedSaveRef.current = null;
+      isSavingRef.current = false;
+
+      const stillDirty = latestSnapshotRef.current !== lastSavedSnapshotRef.current;
+      setHasPendingChanges(stillDirty);
+      setSaveState(stillDirty ? "dirty" : "saved");
+      setSaveMessage(stillDirty ? "Changes pending autosave..." : "All changes saved to PocketBase.");
+    } catch (error) {
+      isSavingRef.current = false;
+      setHasPendingChanges(true);
+      setSaveState("error");
+      setSaveMessage(`Autosave failed. ${getErrorMessage(error)}`);
+    }
+  };
 
   useEffect(() => {
     let isCancelled = false;
@@ -70,6 +124,16 @@ export function EditorPage() {
       setIsReady(false);
       setLoadError("");
       setIsLoading(true);
+      setHasPendingChanges(false);
+
+      if (saveTimeoutRef.current !== null) {
+        window.clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+
+      queuedSaveRef.current = null;
+      isSavingRef.current = false;
+      skipNavigationWarningRef.current = false;
 
       if (!recordId) {
         if (!isCancelled) {
@@ -81,14 +145,19 @@ export function EditorPage() {
 
       try {
         const nextForm = await getForm(recordId);
+        const snapshot = JSON.stringify(nextForm);
+
         if (!isCancelled) {
           dispatch({
             type: "replace",
             payload: nextForm,
           });
+          latestFormRef.current = nextForm;
+          latestSnapshotRef.current = snapshot;
+          lastSavedSnapshotRef.current = snapshot;
           setActiveRecordId(recordId);
-          setSaveState("idle");
-          setSaveMessage("Loaded form from PocketBase.");
+          setSaveState("saved");
+          setSaveMessage("All changes saved to PocketBase.");
           setIsLoading(false);
           setIsReady(true);
         }
@@ -112,33 +181,79 @@ export function EditorPage() {
       return;
     }
 
-    const draftKey = buildDraftKey(activeRecordId ?? "new");
-    window.localStorage.setItem(
-      draftKey,
-      JSON.stringify({
-        recordId: activeRecordId,
-        form,
-      } satisfies StoredDraft),
-    );
-    setSaveMessage(`Saved locally at ${new Date().toLocaleTimeString()}`);
+    const snapshot = JSON.stringify(form);
+    latestFormRef.current = form;
+    latestSnapshotRef.current = snapshot;
+
+    if (snapshot === lastSavedSnapshotRef.current) {
+      if (!isSavingRef.current && queuedSaveRef.current === null) {
+        setHasPendingChanges(false);
+        setSaveState("saved");
+        setSaveMessage("All changes saved to PocketBase.");
+      }
+
+      return;
+    }
+
+    setHasPendingChanges(true);
+    setSaveState((current) => (current === "error" || current === "saving" ? current : "dirty"));
+    setSaveMessage("Changes pending autosave...");
+
+    if (saveTimeoutRef.current !== null) {
+      window.clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = window.setTimeout(() => {
+      saveTimeoutRef.current = null;
+      void flushAutosave(latestFormRef.current, latestSnapshotRef.current);
+    }, 900);
+
+    return () => {
+      if (saveTimeoutRef.current !== null) {
+        window.clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+    };
   }, [activeRecordId, form, isReady]);
 
-  const handleSave = async () => {
-    setSaveState("saving");
-    setSaveMessage("Saving form to PocketBase...");
-
-    try {
-      const result = await saveForm(form, activeRecordId);
-      setActiveRecordId(result.recordId);
-      setSaveState("saved");
-      setSaveMessage("Saved to PocketBase.");
-    } catch (error) {
-      setSaveState("error");
-      setSaveMessage(getErrorMessage(error));
+  useBeforeUnload((event) => {
+    if (!hasPendingChanges) {
+      return;
     }
-  };
+
+    event.preventDefault();
+    event.returnValue = "";
+  });
+
+  useEffect(() => {
+    if (blocker.state !== "blocked") {
+      return;
+    }
+
+    const shouldLeave = window.confirm(
+      "This form still has changes that have not been saved to PocketBase. Leave the editor anyway?",
+    );
+
+    if (shouldLeave) {
+      blocker.proceed();
+      return;
+    }
+
+    blocker.reset();
+  }, [blocker]);
 
   const handleNewForm = async () => {
+    if (hasPendingChanges) {
+      const shouldContinue = window.confirm(
+        "This form still has changes that have not been saved to PocketBase. Create a new form and leave anyway?",
+      );
+
+      if (!shouldContinue) {
+        return;
+      }
+    }
+
+    skipNavigationWarningRef.current = true;
     setSaveState("saving");
     setSaveMessage("Creating a new form in PocketBase...");
 
@@ -146,6 +261,7 @@ export function EditorPage() {
       const created = await createBlankFormRecord(createForm());
       navigate(`/forms/${created.recordId}`);
     } catch (error) {
+      skipNavigationWarningRef.current = false;
       setSaveState("error");
       setSaveMessage(getErrorMessage(error));
     }
@@ -252,9 +368,6 @@ export function EditorPage() {
             <div className="button-group">
               <button type="button" className="button button--secondary" onClick={() => void handleNewForm()}>
                 New form
-              </button>
-              <button type="button" onClick={() => void handleSave()}>
-                Save to PocketBase
               </button>
             </div>
           </div>

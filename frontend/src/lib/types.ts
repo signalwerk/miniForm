@@ -1,10 +1,8 @@
 export type QuestionType =
   | "title_description"
-  | "short_text"
-  | "paragraph"
+  | "text"
   | "single_choice"
-  | "multiple_choice"
-  | "dropdown";
+  | "multiple_choice";
 
 export type NavigationMode = "next" | "block" | "submit";
 
@@ -25,6 +23,8 @@ export interface FormQuestion {
   title: string;
   description: string;
   required: boolean;
+  multilineText: boolean;
+  showAsDropdown: boolean;
   allowOther: boolean;
   otherOptionLabel: string;
   otherOptionNavigation: NavigationRule;
@@ -46,11 +46,6 @@ export interface FormDefinition {
   title: string;
   description: string;
   blocks: FormBlock[];
-}
-
-export interface StoredDraft {
-  recordId: string | null;
-  form: FormDefinition;
 }
 
 export interface FormSummary {

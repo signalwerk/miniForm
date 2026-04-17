@@ -1,4 +1,9 @@
-import { Navigate, NavLink, Outlet, Route, Routes } from "react-router-dom";
+import {
+  Navigate,
+  NavLink,
+  Outlet,
+  createHashRouter,
+} from "react-router-dom";
 import { EditorPage } from "./components/EditorPage";
 import { AuthPage } from "./components/AuthPage";
 import { FormsOverviewPage } from "./components/FormsOverviewPage";
@@ -14,7 +19,22 @@ function RequireAuth() {
   return <Outlet />;
 }
 
-function App() {
+function RootRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={user ? "/forms" : "/auth"} replace />;
+}
+
+function AuthRoute() {
+  const { user } = useAuth();
+  return user ? <Navigate to="/forms" replace /> : <AuthPage />;
+}
+
+function NotFoundRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={user ? "/forms" : "/auth"} replace />;
+}
+
+export default function App() {
   const { user } = useAuth();
 
   return (
@@ -53,17 +73,41 @@ function App() {
         </nav>
       </header>
 
-      <Routes>
-        <Route path="/" element={<Navigate to={user ? "/forms" : "/auth"} replace />} />
-        <Route path="/auth" element={user ? <Navigate to="/forms" replace /> : <AuthPage />} />
-        <Route element={<RequireAuth />}>
-          <Route path="/forms" element={<FormsOverviewPage />} />
-          <Route path="/forms/:recordId" element={<EditorPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to={user ? "/forms" : "/auth"} replace />} />
-      </Routes>
+      <Outlet />
     </div>
   );
 }
 
-export default App;
+export const router = createHashRouter([
+  {
+    path: "/",
+    element: <App />,
+    children: [
+      {
+        index: true,
+        element: <RootRedirect />,
+      },
+      {
+        path: "auth",
+        element: <AuthRoute />,
+      },
+      {
+        element: <RequireAuth />,
+        children: [
+          {
+            path: "forms",
+            element: <FormsOverviewPage />,
+          },
+          {
+            path: "forms/:recordId",
+            element: <EditorPage />,
+          },
+        ],
+      },
+      {
+        path: "*",
+        element: <NotFoundRedirect />,
+      },
+    ],
+  },
+]);
