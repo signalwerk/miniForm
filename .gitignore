@@ -3,3 +3,6 @@ frontend/dist
 frontend/*.tsbuildinfo
 frontend/vite.config.js
 frontend/vite.config.d.ts
+**/__*
+/DATA
+/backend/DATA/pocketbase/pb_data

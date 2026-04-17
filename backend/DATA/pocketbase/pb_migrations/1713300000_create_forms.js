@@ -1,28 +1,25 @@
+/// <reference path="../pb_data/types.d.ts" />
 migrate(
-  (db) => {
+  (app) => {
     const collection = new Collection({
       id: "mini_form_forms",
-      created: "2026-04-16 00:00:00.000Z",
-      updated: "2026-04-16 00:00:00.000Z",
       name: "forms",
       type: "base",
       system: false,
-      schema: [
+      fields: [
         {
-          system: false,
+          "cascadeDelete": false,
+          "collectionId": "_pb_users_auth_",
+          "hidden": false,
           id: "forms_owner",
+          "maxSelect": 1,
+          "minSelect": 0,
+          displayFields: ["name", "email"],
           name: "owner",
-          type: "relation",
-          required: true,
-          presentable: false,
-          unique: false,
-          options: {
-            collectionId: "_pb_users_auth_",
-            cascadeDelete: false,
-            minSelect: 1,
-            maxSelect: 1,
-            displayFields: ["name", "email"],
-          },
+          "presentable": false,
+          "required": true,
+          "system": false,
+          "type": "relation"
         },
         {
           system: false,
@@ -88,12 +85,11 @@ migrate(
       options: {},
     });
 
-    return Dao(db).saveCollection(collection);
+    return app.save(collection);
   },
-  (db) => {
-    const dao = new Dao(db);
-    const collection = dao.findCollectionByNameOrId("forms");
+  (app) => {
+    const collection = app.findCollectionByNameOrId("forms");
 
-    return dao.deleteCollection(collection);
+    return app.delete(collection);
   },
 );
