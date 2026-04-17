@@ -31,6 +31,18 @@ interface FormRecord extends RecordModel {
   updated?: string;
 }
 
+const getPersistedTitle = (form: FormDefinition) => {
+  const title = form.title.trim();
+  return title.length > 0 ? title : "Untitled form";
+};
+
+const buildFormPayload = (form: FormDefinition, ownerId: string) => ({
+  owner: ownerId,
+  title: getPersistedTitle(form),
+  description: form.description,
+  data: form,
+});
+
 export const getCurrentUser = () => pb.authStore.model;
 
 export const registerUser = async (payload: {
@@ -87,12 +99,7 @@ export const createBlankFormRecord = async (form: FormDefinition): Promise<SaveF
     throw new Error("You need to be logged in before creating a form.");
   }
 
-  const created = await pb.collection(COLLECTION_NAME).create<FormRecord>({
-    owner: user.id,
-    title: form.title,
-    description: form.description,
-    data: form,
-  });
+  const created = await pb.collection(COLLECTION_NAME).create<FormRecord>(buildFormPayload(form, user.id));
 
   return { recordId: created.id };
 };
@@ -107,12 +114,7 @@ export const saveForm = async (
     throw new Error("You need to be logged in before saving to PocketBase.");
   }
 
-  const payload = {
-    owner: user.id,
-    title: form.title,
-    description: form.description,
-    data: form,
-  };
+  const payload = buildFormPayload(form, user.id);
 
   if (recordId) {
     const updated = await pb.collection(COLLECTION_NAME).update<FormRecord>(recordId, payload);
