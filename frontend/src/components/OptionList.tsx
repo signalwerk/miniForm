@@ -27,9 +27,12 @@ interface OptionListProps {
   blockTargets: BlockTarget[];
   onAddOption: () => void;
   onUpdateOption: (optionId: string, value: string) => void;
+  onUpdateOtherOptionLabel: (value: string) => void;
+  onToggleOther: (value: boolean) => void;
   onDeleteOption: (optionId: string) => void;
   onMoveOption: (fromIndex: number, toIndex: number) => void;
   onSetOptionRule: (optionId: string, rule: NavigationRule) => void;
+  onSetOtherOptionRule: (rule: NavigationRule) => void;
 }
 
 interface OptionItemProps {
@@ -138,9 +141,12 @@ export function OptionList({
   blockTargets,
   onAddOption,
   onUpdateOption,
+  onUpdateOtherOptionLabel,
+  onToggleOther,
   onDeleteOption,
   onMoveOption,
   onSetOptionRule,
+  onSetOtherOptionRule,
 }: OptionListProps) {
   const optionIds = useMemo(() => question.options.map((option) => option.id), [question.options]);
   const [activeOptionId, setActiveOptionId] = useState<UniqueIdentifier | null>(null);
@@ -171,9 +177,11 @@ export function OptionList({
           <p className="eyebrow">Choices</p>
           <h4>Options</h4>
         </div>
-        <button type="button" className="button button--secondary" onClick={onAddOption}>
-          Add option
-        </button>
+        <div className="button-group">
+          <button type="button" className="button button--secondary" onClick={onAddOption}>
+            Add option
+          </button>
+        </div>
       </div>
 
       <DndContext
@@ -213,8 +221,47 @@ export function OptionList({
         </div>
       ) : null}
 
+      {question.type !== "dropdown" ? (
+        <label className="checkbox option-list__other-toggle">
+          <input
+            type="checkbox"
+            checked={question.allowOther}
+            onChange={(event) => onToggleOther(event.target.checked)}
+          />
+          <span>Show “Other” option</span>
+        </label>
+      ) : null}
+
       {question.allowOther ? (
-        <p className="helper-text">“Other” is enabled. Respondents will be able to type a custom answer.</p>
+        <article className="option-list__item option-list__item--other">
+          <div className="option-list__row">
+            <div className="card-title">
+              <div className="option-list__bullet" aria-hidden="true" />
+              <div className="option-list__main">
+                <label htmlFor={`other-option-${question.id}`}>Other label</label>
+                <input
+                  id={`other-option-${question.id}`}
+                  type="text"
+                  value={question.otherOptionLabel}
+                  placeholder="Other"
+                  onChange={(event) => onUpdateOtherOptionLabel(event.target.value)}
+                />
+              </div>
+            </div>
+
+            {question.routeByAnswer && supportsOptionNavigation(question.type) ? (
+              <div className="option-list__route">
+                <FlowRuleFields
+                  idPrefix={`other-option-rule-${question.id}`}
+                  label="After answer"
+                  rule={question.otherOptionNavigation}
+                  targets={blockTargets}
+                  onChange={onSetOtherOptionRule}
+                />
+              </div>
+            ) : null}
+          </div>
+        </article>
       ) : null}
     </div>
   );

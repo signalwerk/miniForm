@@ -476,6 +476,14 @@ ul {
   flex: 1;
 }
 
+.option-list__bullet {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 2rem;
+  border: 1px solid rgba(17, 17, 17, 0.35);
+  border-radius: 999px;
+}
+
 .option-list__main input {
   border-width: 0 0 1px;
   border-radius: 0;
@@ -485,6 +493,15 @@ ul {
 
 .option-list__route {
   width: min(16rem, 100%);
+}
+
+.option-list__item--other {
+  padding-top: var(--space-xs);
+}
+
+.option-list__other-toggle {
+  padding-top: var(--space-xs);
+  border-top: 1px solid rgba(17, 17, 17, 0.12);
 }
 
 .flow-rule {

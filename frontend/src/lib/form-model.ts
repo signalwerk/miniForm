@@ -58,6 +58,8 @@ export const createQuestion = (type: QuestionType = "short_text"): FormQuestion 
   description: "",
   required: false,
   allowOther: false,
+  otherOptionLabel: "Other",
+  otherOptionNavigation: createNavigationRule(),
   routeByAnswer: false,
   options:
     type === "single_choice" || type === "multiple_choice" || type === "dropdown"
@@ -148,6 +150,7 @@ export const normalizeQuestionType = (
       type: nextType,
       options: [],
       allowOther: false,
+      otherOptionNavigation: createNavigationRule(),
       routeByAnswer: false,
       required: nextType === "title_description" ? false : (question.required ?? false),
     };
@@ -159,6 +162,10 @@ export const normalizeQuestionType = (
     options: question.options.length > 0 ? question.options : [createOption(), createOption()],
     allowOther:
       nextType === "single_choice" || nextType === "multiple_choice" ? (question.allowOther ?? false) : false,
+    otherOptionNavigation:
+      nextType === "single_choice" || nextType === "dropdown"
+        ? (question.otherOptionNavigation ?? createNavigationRule())
+        : createNavigationRule(),
     routeByAnswer:
       nextType === "single_choice" || nextType === "dropdown" ? (question.routeByAnswer ?? false) : false,
   };
@@ -178,6 +185,14 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
 
         return {
           ...normalizedQuestion,
+          otherOptionLabel: normalizedQuestion.otherOptionLabel || "Other",
+          otherOptionNavigation:
+            supportsOptionNavigation(normalizedQuestion.type) && normalizedQuestion.routeByAnswer
+              ? normalizeNavigationRule(
+                  normalizedQuestion.otherOptionNavigation ?? createNavigationRule(),
+                  validBlockIds,
+                )
+              : createNavigationRule(),
           options: normalizedQuestion.options.map((option) => ({
             ...option,
             navigation: supportsOptionNavigation(normalizedQuestion.type) && normalizedQuestion.routeByAnswer
@@ -212,6 +227,16 @@ export const validateForm = (form: FormDefinition) => {
             );
           }
         });
+
+        if (
+          question.allowOther &&
+          question.otherOptionNavigation.mode === "block" &&
+          !question.otherOptionNavigation.targetBlockId
+        ) {
+          issues.push(
+            `"${question.otherOptionLabel || "Other"}" in "${question.title || "Untitled question"}" is missing a target block.`,
+          );
+        }
       }
     });
   });

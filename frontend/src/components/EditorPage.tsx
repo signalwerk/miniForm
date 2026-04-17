@@ -384,9 +384,9 @@ export function EditorPage() {
                       questionType,
                     })
                   }
-                  onQuestionFieldChange={(questionId, field, value) =>
-                    dispatch({
-                      type: "update_question_field",
+              onQuestionFieldChange={(questionId, field, value) =>
+                dispatch({
+                  type: "update_question_field",
                       blockId: block.id,
                       questionId,
                       field,
@@ -471,17 +471,25 @@ export function EditorPage() {
                       toIndex,
                     })
                   }
-                  onSetOptionRule={(questionId, optionId, rule) =>
-                    dispatch({
-                      type: "set_option_rule",
-                      blockId: block.id,
-                      questionId,
-                      optionId,
-                      rule,
-                    })
-                  }
-                />
-              ))}
+              onSetOptionRule={(questionId, optionId, rule) =>
+                dispatch({
+                  type: "set_option_rule",
+                  blockId: block.id,
+                  questionId,
+                  optionId,
+                  rule,
+                })
+              }
+              onSetOtherOptionRule={(questionId, rule) =>
+                dispatch({
+                  type: "set_other_option_rule",
+                  blockId: block.id,
+                  questionId,
+                  rule,
+                })
+              }
+            />
+          ))}
             </div>
           </SortableContext>
         </DndContext>

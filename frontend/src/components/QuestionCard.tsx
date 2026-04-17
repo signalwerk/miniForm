@@ -19,6 +19,7 @@ interface QuestionCardProps {
   dropIndicator: DropIndicatorPosition;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  onOtherOptionLabelChange: (value: string) => void;
   onTypeChange: (value: QuestionType) => void;
   onToggle: (field: "required" | "allowOther" | "routeByAnswer", value: boolean) => void;
   onDuplicate: () => void;
@@ -29,6 +30,7 @@ interface QuestionCardProps {
   onDeleteOption: (optionId: string) => void;
   onMoveOption: (fromIndex: number, toIndex: number) => void;
   onSetOptionRule: (optionId: string, rule: NavigationRule) => void;
+  onSetOtherOptionRule: (rule: NavigationRule) => void;
 }
 
 export function QuestionCard({
@@ -39,6 +41,7 @@ export function QuestionCard({
   dropIndicator,
   onTitleChange,
   onDescriptionChange,
+  onOtherOptionLabelChange,
   onTypeChange,
   onToggle,
   onDuplicate,
@@ -49,6 +52,7 @@ export function QuestionCard({
   onDeleteOption,
   onMoveOption,
   onSetOptionRule,
+  onSetOtherOptionRule,
 }: QuestionCardProps) {
   const {
     attributes,
@@ -146,9 +150,12 @@ export function QuestionCard({
               blockTargets={blockTargets}
               onAddOption={onAddOption}
               onUpdateOption={onUpdateOption}
+              onUpdateOtherOptionLabel={onOtherOptionLabelChange}
+              onToggleOther={(value) => onToggle("allowOther", value)}
               onDeleteOption={onDeleteOption}
               onMoveOption={onMoveOption}
               onSetOptionRule={onSetOptionRule}
+              onSetOtherOptionRule={onSetOtherOptionRule}
             />
           ) : null}
 
@@ -174,18 +181,6 @@ export function QuestionCard({
                     onChange={(event) => onToggle("required", event.target.checked)}
                   />
                   <span>Required</span>
-                </label>
-              ) : null}
-
-              {supportsOptions(question.type) ? (
-                <label className="checkbox">
-                  <input
-                    type="checkbox"
-                    checked={question.allowOther}
-                    onChange={(event) => onToggle("allowOther", event.target.checked)}
-                    disabled={question.type === "dropdown"}
-                  />
-                  <span>Allow “Other”</span>
                 </label>
               ) : null}
 

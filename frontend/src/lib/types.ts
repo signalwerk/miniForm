@@ -26,6 +26,8 @@ export interface FormQuestion {
   description: string;
   required: boolean;
   allowOther: boolean;
+  otherOptionLabel: string;
+  otherOptionNavigation: NavigationRule;
   routeByAnswer: boolean;
   options: FormOption[];
   isCollapsed: boolean;

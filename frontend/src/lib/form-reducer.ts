@@ -23,7 +23,13 @@ export type FormAction =
   | { type: "toggle_block"; blockId: string }
   | { type: "move_block"; fromIndex: number; toIndex: number }
   | { type: "add_question"; blockId: string; questionType?: QuestionType }
-  | { type: "update_question_field"; blockId: string; questionId: string; field: "title" | "description"; value: string }
+  | {
+      type: "update_question_field";
+      blockId: string;
+      questionId: string;
+      field: "title" | "description" | "otherOptionLabel";
+      value: string;
+    }
   | { type: "set_question_type"; blockId: string; questionId: string; questionType: QuestionType }
   | {
       type: "set_question_toggle";
@@ -42,6 +48,7 @@ export type FormAction =
   | { type: "delete_option"; blockId: string; questionId: string; optionId: string }
   | { type: "move_option"; blockId: string; questionId: string; fromIndex: number; toIndex: number }
   | { type: "set_option_rule"; blockId: string; questionId: string; optionId: string; rule: NavigationRule }
+  | { type: "set_other_option_rule"; blockId: string; questionId: string; rule: NavigationRule }
   | { type: "reset" };
 
 const updateBlocks = (
@@ -165,7 +172,15 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
                       : action.field === "routeByAnswer" &&
                           !(question.type === "single_choice" || question.type === "dropdown")
                         ? false
-                      : action.value,
+                        : action.value,
+                  otherOptionLabel:
+                    action.field === "allowOther" && action.value && !question.otherOptionLabel
+                      ? "Other"
+                      : question.otherOptionLabel,
+                  otherOptionNavigation:
+                    action.field === "allowOther" && !action.value
+                      ? createNavigationRule()
+                      : question.otherOptionNavigation,
                 }
               : question,
           ),
@@ -311,6 +326,21 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
                         }
                       : option,
                   ),
+                }
+              : question,
+          ),
+        })),
+      );
+
+    case "set_other_option_rule":
+      return normalizeForm(
+        updateBlocks(state, action.blockId, (block) => ({
+          ...block,
+          questions: block.questions.map((question) =>
+            question.id === action.questionId
+              ? {
+                  ...question,
+                  otherOptionNavigation: action.rule,
                 }
               : question,
           ),

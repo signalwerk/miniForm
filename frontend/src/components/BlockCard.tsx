@@ -35,7 +35,7 @@ interface BlockCardProps {
   onAddQuestion: (type?: QuestionType) => void;
   onQuestionFieldChange: (
     questionId: string,
-    field: "title" | "description",
+    field: "title" | "description" | "otherOptionLabel",
     value: string,
   ) => void;
   onQuestionTypeChange: (questionId: string, questionType: QuestionType) => void;
@@ -53,6 +53,7 @@ interface BlockCardProps {
   onDeleteOption: (questionId: string, optionId: string) => void;
   onMoveOption: (questionId: string, fromIndex: number, toIndex: number) => void;
   onSetOptionRule: (questionId: string, optionId: string, rule: NavigationRule) => void;
+  onSetOtherOptionRule: (questionId: string, rule: NavigationRule) => void;
 }
 
 export function BlockCard({
@@ -78,6 +79,7 @@ export function BlockCard({
   onDeleteOption,
   onMoveOption,
   onSetOptionRule,
+  onSetOtherOptionRule,
 }: BlockCardProps) {
   const availableTargets = blockTargets.filter((target) => target.id !== block.id);
   const questionIds = useMemo(() => block.questions.map((question) => question.id), [block.questions]);
@@ -217,6 +219,9 @@ export function BlockCard({
                       )}
                       onTitleChange={(value) => onQuestionFieldChange(question.id, "title", value)}
                       onDescriptionChange={(value) => onQuestionFieldChange(question.id, "description", value)}
+                      onOtherOptionLabelChange={(value) =>
+                        onQuestionFieldChange(question.id, "otherOptionLabel", value)
+                      }
                       onTypeChange={(value) => onQuestionTypeChange(question.id, value)}
                       onToggle={(field, value) => onQuestionToggle(question.id, field, value)}
                       onDuplicate={() => onDuplicateQuestion(question.id)}
@@ -227,6 +232,7 @@ export function BlockCard({
                       onDeleteOption={(optionId) => onDeleteOption(question.id, optionId)}
                       onMoveOption={(fromIndex, toIndex) => onMoveOption(question.id, fromIndex, toIndex)}
                       onSetOptionRule={(optionId, rule) => onSetOptionRule(question.id, optionId, rule)}
+                      onSetOtherOptionRule={(rule) => onSetOtherOptionRule(question.id, rule)}
                     />
                   ))
                 )}
