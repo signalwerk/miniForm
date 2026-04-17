@@ -389,10 +389,16 @@ ul {
   gap: var(--space-xs);
 }
 
+.question-card__controls {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-sm);
+}
+
 .question-card__footer {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: var(--space-md);
   align-items: center;
   padding-top: var(--space-sm);

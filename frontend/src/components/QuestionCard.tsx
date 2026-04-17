@@ -103,19 +103,33 @@ export function QuestionCard({
           </div>
         </div>
 
-        <div className="question-card__type">
-          <label htmlFor={`question-type-${question.id}`}>Type</label>
-          <select
-            id={`question-type-${question.id}`}
-            value={question.type}
-            onChange={(event) => onTypeChange(event.target.value as QuestionType)}
-          >
-            {QUESTION_TYPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+        <div className="question-card__controls">
+          <div className="question-card__type">
+            <label htmlFor={`question-type-${question.id}`}>Type</label>
+            <select
+              id={`question-type-${question.id}`}
+              value={question.type}
+              onChange={(event) => onTypeChange(event.target.value as QuestionType)}
+            >
+              {QUESTION_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="card-actions">
+            <button type="button" className="button button--ghost" onClick={onDuplicate}>
+              Duplicate
+            </button>
+            <button type="button" className="button button--ghost" onClick={onCollapse}>
+              {question.isCollapsed ? "Expand" : "Collapse"}
+            </button>
+            <button type="button" className="button button--ghost button--danger" onClick={onDelete}>
+              Delete
+            </button>
+          </div>
         </div>
       </header>
 
@@ -165,18 +179,6 @@ export function QuestionCard({
           ) : null}
 
           <footer className="question-card__footer">
-            <div className="card-actions">
-              <button type="button" className="button button--ghost" onClick={onDuplicate}>
-                Duplicate
-              </button>
-              <button type="button" className="button button--ghost" onClick={onCollapse}>
-                {question.isCollapsed ? "Expand" : "Collapse"}
-              </button>
-              <button type="button" className="button button--ghost button--danger" onClick={onDelete}>
-                Delete
-              </button>
-            </div>
-
             <div className="toggle-row">
               {!isInformational ? (
                 <label className="checkbox">
