@@ -3,21 +3,16 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    ports:
-      - "3030:3000"
+    ports: !override
+      - "3030:5173"
     environment:
       - NODE_ENV=development
-      - POCKETBASE_URL=http://pocketbase:8090
-      - NEXT_PUBLIC_POCKETBASE_URL=http://monojournal.localhost.signalwerk.ch:8090
-      - POCKETBASE_USERS_COLLECTION=${POCKETBASE_USERS_COLLECTION:-users}
-      - SESSION_SECRET=${SESSION_SECRET:-change-this-secret}
-      - SITE_PROJECT_ID=${SITE_PROJECT_ID:-}
+      - VITE_POCKETBASE_URL=${VITE_POCKETBASE_URL:-http://localhost:8090}
     depends_on:
       - pocketbase
     volumes:
       - ./frontend:/app
       - /app/node_modules
-      - /app/.next
     command: sh -lc "npm ci && npm run dev"
 
   pocketbase:
