@@ -1,4 +1,5 @@
 export type QuestionType =
+  | "title_description"
   | "short_text"
   | "paragraph"
   | "single_choice"
@@ -25,6 +26,7 @@ export interface FormQuestion {
   description: string;
   required: boolean;
   allowOther: boolean;
+  routeByAnswer: boolean;
   options: FormOption[];
   isCollapsed: boolean;
 }

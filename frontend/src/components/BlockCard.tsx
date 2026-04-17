@@ -41,7 +41,7 @@ interface BlockCardProps {
   onQuestionTypeChange: (questionId: string, questionType: QuestionType) => void;
   onQuestionToggle: (
     questionId: string,
-    field: "required" | "allowOther",
+    field: "required" | "allowOther" | "routeByAnswer",
     value: boolean,
   ) => void;
   onDeleteQuestion: (questionId: string) => void;
@@ -166,6 +166,7 @@ export function BlockCard({
                 id={`block-title-${block.id}`}
                 type="text"
                 value={block.title}
+                placeholder="Block title"
                 onChange={(event) => onUpdateBlock({ title: event.target.value })}
               />
             </div>
@@ -195,40 +196,54 @@ export function BlockCard({
           >
             <SortableContext items={questionIds} strategy={verticalListSortingStrategy}>
               <div className="block-card__questions">
-                {block.questions.map((question, questionIndex) => (
-                  <QuestionCard
-                    key={question.id}
-                    blockId={block.id}
-                    question={question}
-                    index={questionIndex}
-                    blockTargets={availableTargets}
-                    dropIndicator={getDropIndicator(
-                      questionIds,
-                      question.id,
-                      activeQuestionId,
-                      overQuestionId,
-                    )}
-                    onTitleChange={(value) => onQuestionFieldChange(question.id, "title", value)}
-                    onDescriptionChange={(value) => onQuestionFieldChange(question.id, "description", value)}
-                    onTypeChange={(value) => onQuestionTypeChange(question.id, value)}
-                    onToggle={(field, value) => onQuestionToggle(question.id, field, value)}
-                    onDuplicate={() => onDuplicateQuestion(question.id)}
-                    onDelete={() => onDeleteQuestion(question.id)}
-                    onCollapse={() => onToggleQuestion(question.id)}
-                    onAddOption={() => onAddOption(question.id)}
-                    onUpdateOption={(optionId, value) => onUpdateOption(question.id, optionId, value)}
-                    onDeleteOption={(optionId) => onDeleteOption(question.id, optionId)}
-                    onMoveOption={(fromIndex, toIndex) => onMoveOption(question.id, fromIndex, toIndex)}
-                    onSetOptionRule={(optionId, rule) => onSetOptionRule(question.id, optionId, rule)}
-                  />
-                ))}
+                {block.questions.length === 0 ? (
+                  <div className="empty-state">
+                    <p className="eyebrow">No items yet</p>
+                    <p>Add a question or an informational title inside this block.</p>
+                  </div>
+                ) : (
+                  block.questions.map((question, questionIndex) => (
+                    <QuestionCard
+                      key={question.id}
+                      blockId={block.id}
+                      question={question}
+                      index={questionIndex}
+                      blockTargets={availableTargets}
+                      dropIndicator={getDropIndicator(
+                        questionIds,
+                        question.id,
+                        activeQuestionId,
+                        overQuestionId,
+                      )}
+                      onTitleChange={(value) => onQuestionFieldChange(question.id, "title", value)}
+                      onDescriptionChange={(value) => onQuestionFieldChange(question.id, "description", value)}
+                      onTypeChange={(value) => onQuestionTypeChange(question.id, value)}
+                      onToggle={(field, value) => onQuestionToggle(question.id, field, value)}
+                      onDuplicate={() => onDuplicateQuestion(question.id)}
+                      onDelete={() => onDeleteQuestion(question.id)}
+                      onCollapse={() => onToggleQuestion(question.id)}
+                      onAddOption={() => onAddOption(question.id)}
+                      onUpdateOption={(optionId, value) => onUpdateOption(question.id, optionId, value)}
+                      onDeleteOption={(optionId) => onDeleteOption(question.id, optionId)}
+                      onMoveOption={(fromIndex, toIndex) => onMoveOption(question.id, fromIndex, toIndex)}
+                      onSetOptionRule={(optionId, rule) => onSetOptionRule(question.id, optionId, rule)}
+                    />
+                  ))
+                )}
               </div>
             </SortableContext>
           </DndContext>
 
           <div className="add-row">
-            <span className="eyebrow">Add question</span>
+            <span className="eyebrow">Add item</span>
             <div className="button-group">
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() => onAddQuestion("title_description")}
+              >
+                Title & Description
+              </button>
               <button type="button" className="button button--secondary" onClick={() => onAddQuestion("short_text")}>
                 Short text
               </button>

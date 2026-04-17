@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { QUESTION_TYPE_OPTIONS, supportsOptions } from "../lib/form-model";
+import { QUESTION_TYPE_OPTIONS, supportsOptionNavigation, supportsOptions } from "../lib/form-model";
 import type { DropIndicatorPosition } from "../lib/dnd";
 import type { FormQuestion, NavigationRule, QuestionType } from "../lib/types";
 import { DragHandle } from "./DragHandle";
@@ -20,7 +20,7 @@ interface QuestionCardProps {
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onTypeChange: (value: QuestionType) => void;
-  onToggle: (field: "required" | "allowOther", value: boolean) => void;
+  onToggle: (field: "required" | "allowOther" | "routeByAnswer", value: boolean) => void;
   onDuplicate: () => void;
   onDelete: () => void;
   onCollapse: () => void;
@@ -62,6 +62,9 @@ export function QuestionCard({
     id: question.id,
   });
 
+  const isInformational = question.type === "title_description";
+  const canRouteByAnswer = supportsOptionNavigation(question.type);
+
   return (
     <article
       ref={setNodeRef}
@@ -87,89 +90,54 @@ export function QuestionCard({
           />
           <div>
             <p className="eyebrow">Question {index + 1}</p>
-            <h3>{question.title || "Untitled question"}</h3>
+            <h3>{question.title || (isInformational ? "Untitled title" : "Untitled question")}</h3>
           </div>
         </div>
 
-        <div className="card-actions">
-          <button type="button" className="button button--ghost" onClick={onDuplicate}>
-            Duplicate
-          </button>
-          <button type="button" className="button button--ghost" onClick={onCollapse}>
-            {question.isCollapsed ? "Expand" : "Collapse"}
-          </button>
-          <button type="button" className="button button--ghost button--danger" onClick={onDelete}>
-            Delete
-          </button>
+        <div className="question-card__type">
+          <label htmlFor={`question-type-${question.id}`}>Type</label>
+          <select
+            id={`question-type-${question.id}`}
+            value={question.type}
+            onChange={(event) => onTypeChange(event.target.value as QuestionType)}
+          >
+            {QUESTION_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
       </header>
 
       {!question.isCollapsed ? (
         <div className="question-card__body">
-          <div className="field-grid">
-            <div>
-              <label htmlFor={`question-title-${question.id}`}>Prompt</label>
-              <input
-                id={`question-title-${question.id}`}
-                type="text"
-                value={question.title}
-                placeholder="Ask your question"
-                onChange={(event) => onTitleChange(event.target.value)}
-              />
-            </div>
-
-            <div>
-              <label htmlFor={`question-type-${question.id}`}>Type</label>
-              <select
-                id={`question-type-${question.id}`}
-                value={question.type}
-                onChange={(event) => onTypeChange(event.target.value as QuestionType)}
-              >
-                {QUESTION_TYPE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
           <div>
-            <label htmlFor={`question-description-${question.id}`}>Help text</label>
-            <textarea
-              id={`question-description-${question.id}`}
-              value={question.description}
-              placeholder="Optional description for the respondent"
-              rows={3}
-              onChange={(event) => onDescriptionChange(event.target.value)}
+            <label htmlFor={`question-title-${question.id}`}>{isInformational ? "Title" : "Prompt"}</label>
+            <input
+              id={`question-title-${question.id}`}
+              type="text"
+              value={question.title}
+              placeholder={isInformational ? "Add a title" : "Ask your question"}
+              onChange={(event) => onTitleChange(event.target.value)}
             />
           </div>
 
-          <div className="toggle-row">
-            <label className="checkbox">
-              <input
-                type="checkbox"
-                checked={question.required}
-                onChange={(event) => onToggle("required", event.target.checked)}
-              />
-              <span>Required</span>
+          <div>
+            <label htmlFor={`question-description-${question.id}`}>
+              {isInformational ? "Description" : "Help text"}
             </label>
-
-            {supportsOptions(question.type) ? (
-              <label className="checkbox">
-                <input
-                  type="checkbox"
-                  checked={question.allowOther}
-                  onChange={(event) => onToggle("allowOther", event.target.checked)}
-                  disabled={question.type === "dropdown"}
-                />
-                <span>Allow “Other”</span>
-              </label>
-            ) : null}
-
-            <p className="helper-text">
-              Use the drag handle to reorder questions inside block {blockId.slice(0, 4).toUpperCase()}.
-            </p>
+            <textarea
+              id={`question-description-${question.id}`}
+              value={question.description}
+              placeholder={
+                isInformational
+                  ? "Add explanatory text inside this block"
+                  : "Optional description for the respondent"
+              }
+              rows={isInformational ? 4 : 3}
+              onChange={(event) => onDescriptionChange(event.target.value)}
+            />
           </div>
 
           {supportsOptions(question.type) ? (
@@ -183,6 +151,60 @@ export function QuestionCard({
               onSetOptionRule={onSetOptionRule}
             />
           ) : null}
+
+          <footer className="question-card__footer">
+            <div className="card-actions">
+              <button type="button" className="button button--ghost" onClick={onDuplicate}>
+                Duplicate
+              </button>
+              <button type="button" className="button button--ghost" onClick={onCollapse}>
+                {question.isCollapsed ? "Expand" : "Collapse"}
+              </button>
+              <button type="button" className="button button--ghost button--danger" onClick={onDelete}>
+                Delete
+              </button>
+            </div>
+
+            <div className="toggle-row">
+              {!isInformational ? (
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={question.required}
+                    onChange={(event) => onToggle("required", event.target.checked)}
+                  />
+                  <span>Required</span>
+                </label>
+              ) : null}
+
+              {supportsOptions(question.type) ? (
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={question.allowOther}
+                    onChange={(event) => onToggle("allowOther", event.target.checked)}
+                    disabled={question.type === "dropdown"}
+                  />
+                  <span>Allow “Other”</span>
+                </label>
+              ) : null}
+
+              {canRouteByAnswer ? (
+                <label className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={question.routeByAnswer}
+                    onChange={(event) => onToggle("routeByAnswer", event.target.checked)}
+                  />
+                  <span>Go to block based on answer</span>
+                </label>
+              ) : null}
+
+              <p className="helper-text">
+                Use the drag handle to reorder questions inside block {blockId.slice(0, 4).toUpperCase()}.
+              </p>
+            </div>
+          </footer>
         </div>
       ) : null}
     </article>

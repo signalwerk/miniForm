@@ -372,14 +372,31 @@ ul {
 }
 
 .question-card {
-  padding: var(--space-md);
+  padding: 1.1rem 1.25rem 0.9rem;
+  border-left: 4px solid #4a74d6;
   background:
-    linear-gradient(180deg, rgba(17, 17, 17, 0.015), transparent 24%),
+    linear-gradient(180deg, rgba(17, 17, 17, 0.02), transparent 24%),
     var(--color-surface);
 }
 
 .question-card__body {
   margin-top: var(--space-sm);
+}
+
+.question-card__type {
+  width: min(15rem, 100%);
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.question-card__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-md);
+  align-items: center;
+  padding-top: var(--space-sm);
+  border-top: 1px solid rgba(17, 17, 17, 0.12);
 }
 
 .card-title {
@@ -426,10 +443,10 @@ ul {
 }
 
 .option-list {
-  padding: var(--space-md);
-  border: 1px dashed rgba(17, 17, 17, 0.35);
+  padding: var(--space-sm) 0 0;
+  border: 0;
   border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.55);
+  background: transparent;
 }
 
 .option-list__header,
@@ -440,8 +457,8 @@ ul {
 }
 
 .option-list__item {
-  padding-top: var(--space-sm);
-  border-top: 1px solid rgba(17, 17, 17, 0.12);
+  padding: var(--space-xs) 0;
+  border-top: 0;
 }
 
 .option-list__item:first-of-type {
@@ -449,9 +466,25 @@ ul {
   border-top: 0;
 }
 
+.option-list__row {
+  align-items: center;
+  gap: var(--space-sm);
+}
+
 .option-list__main {
   min-width: 0;
   flex: 1;
+}
+
+.option-list__main input {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.6rem 0.4rem;
+}
+
+.option-list__route {
+  width: min(16rem, 100%);
 }
 
 .flow-rule {
@@ -491,6 +524,21 @@ ul {
 .question-card--dragging,
 .option-list__item--dragging {
   opacity: 0.55;
+}
+
+.empty-state {
+  padding: var(--space-md);
+  border: 1px dashed rgba(17, 17, 17, 0.25);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.empty-state p:last-child {
+  margin-bottom: 0;
+}
+
+.empty-state--subtle {
+  padding: 0.85rem;
 }
 
 .block-card--drop-before::before,

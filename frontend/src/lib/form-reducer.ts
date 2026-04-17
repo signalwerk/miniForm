@@ -25,7 +25,13 @@ export type FormAction =
   | { type: "add_question"; blockId: string; questionType?: QuestionType }
   | { type: "update_question_field"; blockId: string; questionId: string; field: "title" | "description"; value: string }
   | { type: "set_question_type"; blockId: string; questionId: string; questionType: QuestionType }
-  | { type: "set_question_toggle"; blockId: string; questionId: string; field: "required" | "allowOther"; value: boolean }
+  | {
+      type: "set_question_toggle";
+      blockId: string;
+      questionId: string;
+      field: "required" | "allowOther" | "routeByAnswer";
+      value: boolean;
+    }
   | { type: "delete_question"; blockId: string; questionId: string }
   | { type: "duplicate_question"; blockId: string; questionId: string }
   | { type: "toggle_question"; blockId: string; questionId: string }
@@ -156,6 +162,9 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
                   [action.field]:
                     action.field === "allowOther" && !supportsOptions(question.type)
                       ? false
+                      : action.field === "routeByAnswer" &&
+                          !(question.type === "single_choice" || question.type === "dropdown")
+                        ? false
                       : action.value,
                 }
               : question,
@@ -227,7 +236,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
             question.id === action.questionId
               ? {
                   ...question,
-                  options: [...question.options, createOption(`Option ${question.options.length + 1}`)],
+                  options: [...question.options, createOption()],
                 }
               : question,
           ),

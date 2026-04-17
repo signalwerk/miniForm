@@ -17,6 +17,7 @@ const createId = () => {
 };
 
 export const QUESTION_TYPE_OPTIONS: Array<{ value: QuestionType; label: string }> = [
+  { value: "title_description", label: "Title & Description" },
   { value: "short_text", label: "Short text" },
   { value: "paragraph", label: "Paragraph" },
   { value: "single_choice", label: "Single choice" },
@@ -57,25 +58,26 @@ export const createQuestion = (type: QuestionType = "short_text"): FormQuestion 
   description: "",
   required: false,
   allowOther: false,
+  routeByAnswer: false,
   options:
     type === "single_choice" || type === "multiple_choice" || type === "dropdown"
-      ? [createOption("Option 1"), createOption("Option 2")]
+      ? [createOption(), createOption()]
       : [],
   isCollapsed: false,
 });
 
 export const createBlock = (): FormBlock => ({
   id: createId(),
-  title: "Untitled block",
+  title: "",
   description: "",
-  questions: [createQuestion()],
+  questions: [],
   afterBlock: createNavigationRule(),
   isCollapsed: false,
 });
 
 export const createForm = (): FormDefinition => ({
   id: createId(),
-  title: "Untitled form",
+  title: "",
   description: "",
   blocks: [createBlock()],
 });
@@ -146,15 +148,19 @@ export const normalizeQuestionType = (
       type: nextType,
       options: [],
       allowOther: false,
+      routeByAnswer: false,
+      required: nextType === "title_description" ? false : (question.required ?? false),
     };
   }
 
   return {
     ...question,
     type: nextType,
-    options: question.options.length > 0 ? question.options : [createOption("Option 1"), createOption("Option 2")],
+    options: question.options.length > 0 ? question.options : [createOption(), createOption()],
     allowOther:
-      nextType === "single_choice" || nextType === "multiple_choice" ? question.allowOther : false,
+      nextType === "single_choice" || nextType === "multiple_choice" ? (question.allowOther ?? false) : false,
+    routeByAnswer:
+      nextType === "single_choice" || nextType === "dropdown" ? (question.routeByAnswer ?? false) : false,
   };
 };
 
@@ -174,7 +180,7 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
           ...normalizedQuestion,
           options: normalizedQuestion.options.map((option) => ({
             ...option,
-            navigation: supportsOptionNavigation(normalizedQuestion.type)
+            navigation: supportsOptionNavigation(normalizedQuestion.type) && normalizedQuestion.routeByAnswer
               ? normalizeNavigationRule(option.navigation, validBlockIds)
               : createNavigationRule(),
           })),
@@ -198,7 +204,7 @@ export const validateForm = (form: FormDefinition) => {
         issues.push(`Question "${question.title || "Untitled question"}" needs at least one option.`);
       }
 
-      if (supportsOptionNavigation(question.type)) {
+      if (supportsOptionNavigation(question.type) && question.routeByAnswer) {
         question.options.forEach((option) => {
           if (option.navigation.mode === "block" && !option.navigation.targetBlockId) {
             issues.push(

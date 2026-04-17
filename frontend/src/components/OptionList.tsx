@@ -106,6 +106,18 @@ function OptionItem({
           </div>
         </div>
 
+        {supportsOptionNavigation(questionType) ? (
+          <div className="option-list__route">
+            <FlowRuleFields
+              idPrefix={`option-rule-${optionId}`}
+              label="After answer"
+              rule={navigation}
+              targets={blockTargets}
+              onChange={(rule) => onSetOptionRule(optionId, rule)}
+            />
+          </div>
+        ) : null}
+
         <div className="option-list__actions">
           <button
             type="button"
@@ -117,16 +129,6 @@ function OptionItem({
           </button>
         </div>
       </div>
-
-      {supportsOptionNavigation(questionType) ? (
-        <FlowRuleFields
-          idPrefix={`option-rule-${optionId}`}
-          label="When this option is chosen"
-          rule={navigation}
-          targets={blockTargets}
-          onChange={(rule) => onSetOptionRule(optionId, rule)}
-        />
-      ) : null}
     </article>
   );
 }
@@ -193,7 +195,7 @@ export function OptionList({
               index={index}
               label={option.label}
               canDelete={question.options.length > 1}
-              questionType={question.type}
+              questionType={question.routeByAnswer ? question.type : "multiple_choice"}
               navigation={option.navigation}
               blockTargets={blockTargets}
               dropIndicator={getDropIndicator(optionIds, option.id, activeOptionId, overOptionId)}
@@ -204,6 +206,12 @@ export function OptionList({
           ))}
         </SortableContext>
       </DndContext>
+
+      {question.options.length === 0 ? (
+        <div className="empty-state empty-state--subtle">
+          <p>Add options to let respondents choose an answer.</p>
+        </div>
+      ) : null}
 
       {question.allowOther ? (
         <p className="helper-text">“Other” is enabled. Respondents will be able to type a custom answer.</p>

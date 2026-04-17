@@ -287,6 +287,7 @@ export function EditorPage() {
                 id="form-title"
                 type="text"
                 value={form.title}
+                placeholder="Form title"
                 onChange={(event) =>
                   dispatch({
                     type: "set_form_field",
