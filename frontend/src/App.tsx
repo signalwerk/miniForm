@@ -1,45 +1,66 @@
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Navigate, NavLink, Outlet, Route, Routes } from "react-router-dom";
 import { EditorPage } from "./components/EditorPage";
-import { ViewerPage } from "./components/ViewerPage";
+import { AuthPage } from "./components/AuthPage";
+import { FormsOverviewPage } from "./components/FormsOverviewPage";
+import { useAuth } from "./lib/auth-context";
+
+function RequireAuth() {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  return <Outlet />;
+}
 
 function App() {
+  const { user } = useAuth();
+
   return (
     <div className="app-shell">
       <header className="app-shell__header">
         <div>
           <p className="eyebrow">miniForm</p>
-          <h1>Self-hosted form editor</h1>
+          <h1>Form builder</h1>
+          <p className="helper-text">Self-hosted editor with PocketBase storage.</p>
         </div>
         <nav aria-label="Main navigation">
           <ul className="app-nav">
             <li>
               <NavLink
-                to="/editor"
+                to="/auth"
                 className={({ isActive }) =>
                   isActive ? "app-nav__link app-nav__link--active" : "app-nav__link"
                 }
               >
-                Editor
+                Account
               </NavLink>
             </li>
-            <li>
-              <NavLink
-                to="/viewer"
-                className={({ isActive }) =>
-                  isActive ? "app-nav__link app-nav__link--active" : "app-nav__link"
-                }
-              >
-                Viewer
-              </NavLink>
-            </li>
+            {user ? (
+              <li>
+                <NavLink
+                  to="/forms"
+                  className={({ isActive }) =>
+                    isActive ? "app-nav__link app-nav__link--active" : "app-nav__link"
+                  }
+                >
+                  Forms
+                </NavLink>
+              </li>
+            ) : null}
           </ul>
         </nav>
       </header>
 
       <Routes>
-        <Route path="/" element={<Navigate to="/editor" replace />} />
-        <Route path="/editor" element={<EditorPage />} />
-        <Route path="/viewer" element={<ViewerPage />} />
+        <Route path="/" element={<Navigate to={user ? "/forms" : "/auth"} replace />} />
+        <Route path="/auth" element={user ? <Navigate to="/forms" replace /> : <AuthPage />} />
+        <Route element={<RequireAuth />}>
+          <Route path="/forms" element={<FormsOverviewPage />} />
+          <Route path="/forms/:formId" element={<EditorPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to={user ? "/forms" : "/auth"} replace />} />
       </Routes>
     </div>
   );

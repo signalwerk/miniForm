@@ -1,21 +1,31 @@
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  type DragStartEvent,
+  type UniqueIdentifier,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useEffect, useMemo, useReducer, useState } from "react";
-import type { ClientResponseError } from "pocketbase";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { BlockCard } from "./BlockCard";
-import { AuthPanel } from "./AuthPanel";
-import { FormsLibrary } from "./FormsLibrary";
-import { createForm, normalizeForm, validateForm } from "../lib/form-model";
+import { createForm, validateForm } from "../lib/form-model";
 import { formReducer, getInitialFormState } from "../lib/form-reducer";
-import { getCurrentUser, getForm, listForms, loginUser, logoutUser, pb, registerUser, saveForm } from "../lib/pocketbase";
-import type { FormSummary, NavigationRule, QuestionType, StoredDraft } from "../lib/types";
+import { getDropIndicator } from "../lib/dnd";
+import { getForm, saveForm } from "../lib/pocketbase";
+import type { NavigationRule, QuestionType, StoredDraft } from "../lib/types";
 
 const LOCAL_STORAGE_KEY = "mini-form-editor-draft";
 
-const readDraft = (): StoredDraft => {
+const readDraft = (draftKey: string): StoredDraft => {
   if (typeof window === "undefined") {
     return { recordId: null, form: getInitialFormState() };
   }
 
-  const raw = window.localStorage.getItem(LOCAL_STORAGE_KEY);
+  const raw = window.localStorage.getItem(draftKey);
   if (!raw) {
     return { recordId: null, form: getInitialFormState() };
   }
@@ -35,20 +45,30 @@ const getErrorMessage = (error: unknown) => {
   return "Something went wrong.";
 };
 
+const buildDraftKey = (formId: string) => `${LOCAL_STORAGE_KEY}:${formId}`;
+
 export function EditorPage() {
-  const initialDraft = readDraft();
-  const [form, dispatch] = useReducer(formReducer, initialDraft.form, normalizeForm);
-  const [activeRecordId, setActiveRecordId] = useState<string | null>(initialDraft.recordId);
-  const [forms, setForms] = useState<FormSummary[]>([]);
-  const [isLibraryLoading, setIsLibraryLoading] = useState(false);
-  const [authModel, setAuthModel] = useState(getCurrentUser());
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authError, setAuthError] = useState("");
+  const navigate = useNavigate();
+  const { formId = "new" } = useParams();
+  const [form, dispatch] = useReducer(formReducer, undefined, getInitialFormState);
+  const [activeRecordId, setActiveRecordId] = useState<string | null>(formId === "new" ? null : formId);
+  const [isReady, setIsReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(formId !== "new");
+  const [loadError, setLoadError] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState("Local autosave is active.");
-  const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null);
-  const [draggedQuestionId, setDraggedQuestionId] = useState<string | null>(null);
+  const [activeBlockId, setActiveBlockId] = useState<UniqueIdentifier | null>(null);
+  const [overBlockId, setOverBlockId] = useState<UniqueIdentifier | null>(null);
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 6,
+      },
+    }),
+  );
+
+  const blockIds = useMemo(() => form.blocks.map((block) => block.id), [form.blocks]);
   const blockTargets = useMemo(
     () =>
       form.blocks.map((block, index) => ({
@@ -61,46 +81,73 @@ export function EditorPage() {
   const validationIssues = useMemo(() => validateForm(form), [form]);
 
   useEffect(() => {
+    let isCancelled = false;
+
+    const loadEditor = async () => {
+      setIsReady(false);
+      setLoadError("");
+
+      if (formId === "new") {
+        const draft = readDraft(buildDraftKey("new"));
+        if (!isCancelled) {
+          dispatch({
+            type: "replace",
+            payload: draft.form ?? createForm(),
+          });
+          setActiveRecordId(draft.recordId);
+          setSaveState("idle");
+          setSaveMessage("Loaded local draft.");
+          setIsLoading(false);
+          setIsReady(true);
+        }
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        const nextForm = await getForm(formId);
+        if (!isCancelled) {
+          dispatch({
+            type: "replace",
+            payload: nextForm,
+          });
+          setActiveRecordId(formId);
+          setSaveState("idle");
+          setSaveMessage("Loaded form from PocketBase.");
+          setIsLoading(false);
+          setIsReady(true);
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          setLoadError(getErrorMessage(error));
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadEditor();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [formId]);
+
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
+    const draftKey = buildDraftKey(activeRecordId ?? "new");
     window.localStorage.setItem(
-      LOCAL_STORAGE_KEY,
+      draftKey,
       JSON.stringify({
         recordId: activeRecordId,
         form,
       } satisfies StoredDraft),
     );
     setSaveMessage(`Saved locally at ${new Date().toLocaleTimeString()}`);
-  }, [activeRecordId, form]);
-
-  useEffect(() => {
-    const unsubscribe = pb.authStore.onChange(() => {
-      setAuthModel(getCurrentUser());
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (!authModel) {
-      setForms([]);
-      return;
-    }
-
-    void refreshForms();
-  }, [authModel]);
-
-  const refreshForms = async () => {
-    if (!getCurrentUser()) {
-      return;
-    }
-
-    setIsLibraryLoading(true);
-    try {
-      const nextForms = await listForms();
-      setForms(nextForms);
-    } finally {
-      setIsLibraryLoading(false);
-    }
-  };
+  }, [activeRecordId, form, isReady]);
 
   const handleSave = async () => {
     setSaveState("saving");
@@ -111,7 +158,10 @@ export function EditorPage() {
       setActiveRecordId(result.recordId);
       setSaveState("saved");
       setSaveMessage("Saved to PocketBase.");
-      await refreshForms();
+
+      if (formId === "new") {
+        navigate(`/forms/${result.recordId}`, { replace: true });
+      }
     } catch (error) {
       setSaveState("error");
       setSaveMessage(getErrorMessage(error));
@@ -119,39 +169,25 @@ export function EditorPage() {
   };
 
   const handleNewForm = () => {
-    dispatch({ type: "replace", payload: createForm() });
-    setActiveRecordId(null);
-    setSaveState("idle");
-    setSaveMessage("Started a fresh local draft.");
+    navigate("/forms/new");
   };
 
-  const handleLoadForm = async (recordId: string) => {
-    setSaveMessage("Loading form from PocketBase...");
+  const handleBlockDragEnd = ({ active, over }: DragEndEvent) => {
+    setActiveBlockId(null);
+    setOverBlockId(null);
 
-    try {
-      const nextForm = await getForm(recordId);
-      dispatch({ type: "replace", payload: nextForm });
-      setActiveRecordId(recordId);
-      setSaveMessage("Loaded saved form.");
-      setSaveState("idle");
-    } catch (error) {
-      setSaveState("error");
-      setSaveMessage(getErrorMessage(error));
+    if (!over || active.id === over.id) {
+      return;
     }
-  };
 
-  const handleAuthAction = async (callback: () => Promise<void>) => {
-    setAuthBusy(true);
-    setAuthError("");
+    const fromIndex = blockIds.indexOf(String(active.id));
+    const toIndex = blockIds.indexOf(String(over.id));
 
-    try {
-      await callback();
-    } catch (error) {
-      const responseError = error as ClientResponseError;
-      setAuthError(responseError.response?.message || getErrorMessage(error));
-    } finally {
-      setAuthBusy(false);
-    }
+    dispatch({
+      type: "move_block",
+      fromIndex,
+      toIndex,
+    });
   };
 
   const saveStateClassName =
@@ -161,32 +197,53 @@ export function EditorPage() {
         ? "status-pill status-pill--ok"
         : "status-pill";
 
+  if (isLoading) {
+    return (
+      <main className="route-page">
+        <section className="panel">
+          <p className="eyebrow">Step 3</p>
+          <h2>Loading editor</h2>
+          <p>Fetching the form from PocketBase…</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <main className="route-page">
+        <section className="panel">
+          <p className="eyebrow">Step 3</p>
+          <h2>Could not open the form</h2>
+          <p className="status-pill status-pill--error">{loadError}</p>
+          <p>
+            <Link className="text-link" to="/forms">
+              Back to forms overview
+            </Link>
+          </p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="editor-layout">
       <aside className="editor-layout__sidebar">
-        <AuthPanel
-          authModel={authModel}
-          authBusy={authBusy}
-          authError={authError}
-          pocketbaseUrl={pb.baseURL}
-          onLogin={(payload) => handleAuthAction(() => loginUser(payload))}
-          onRegister={(payload) => handleAuthAction(() => registerUser(payload))}
-          onLogout={() => {
-            logoutUser();
-            setActiveRecordId(null);
-          }}
-        />
+        <section className="panel">
+          <p className="eyebrow">Step 3</p>
+          <h2>Form editor</h2>
+          <p>Edit one form at a time. Blocks, questions, and options can all be reordered with the drag handles.</p>
+          <div className="button-group">
+            <Link className="app-nav__link" to="/forms">
+              Back to forms
+            </Link>
+            <button type="button" className="button button--secondary" onClick={handleNewForm}>
+              New form
+            </button>
+          </div>
+        </section>
 
-        <FormsLibrary
-          forms={forms}
-          activeRecordId={activeRecordId}
-          isLoading={isLibraryLoading}
-          onNewForm={handleNewForm}
-          onRefresh={() => void refreshForms()}
-          onLoad={(recordId) => void handleLoadForm(recordId)}
-        />
-
-        <aside className="panel">
+        <section className="panel">
           <div className="panel__header">
             <div>
               <p className="eyebrow">Validation</p>
@@ -202,22 +259,22 @@ export function EditorPage() {
               ))}
             </ul>
           )}
-        </aside>
+        </section>
       </aside>
 
       <section className="editor-layout__main">
         <section className="panel panel--hero">
           <div className="panel__header">
             <div>
-              <p className="eyebrow">Editor</p>
-              <h2>Form settings</h2>
+              <p className="eyebrow">Form settings</p>
+              <h2>{form.title || "Untitled form"}</h2>
             </div>
 
             <div className="button-group">
               <button type="button" className="button button--secondary" onClick={handleNewForm}>
                 New form
               </button>
-              <button type="button" onClick={() => void handleSave()} disabled={!authModel}>
+              <button type="button" onClick={() => void handleSave()}>
                 Save to PocketBase
               </button>
             </div>
@@ -266,186 +323,167 @@ export function EditorPage() {
           </div>
         </section>
 
-        <div className="block-list">
-          {form.blocks.map((block, blockIndex) => (
-            <BlockCard
-              key={block.id}
-              block={block}
-              index={blockIndex}
-              blockTargets={blockTargets}
-              onUpdateBlock={(patch) =>
-                dispatch({
-                  type: "update_block",
-                  blockId: block.id,
-                  patch,
-                })
-              }
-              onDeleteBlock={() =>
-                dispatch({
-                  type: "delete_block",
-                  blockId: block.id,
-                })
-              }
-              onDuplicateBlock={() =>
-                dispatch({
-                  type: "duplicate_block",
-                  blockId: block.id,
-                })
-              }
-              onToggleBlock={() =>
-                dispatch({
-                  type: "toggle_block",
-                  blockId: block.id,
-                })
-              }
-              onMoveBlock={(fromIndex, toIndex) =>
-                dispatch({
-                  type: "move_block",
-                  fromIndex,
-                  toIndex,
-                })
-              }
-              onBlockDragStart={() => setDraggedBlockId(block.id)}
-              onBlockDrop={() => {
-                if (!draggedBlockId || draggedBlockId === block.id) {
-                  return;
-                }
-
-                const fromIndex = form.blocks.findIndex((item) => item.id === draggedBlockId);
-                const toIndex = form.blocks.findIndex((item) => item.id === block.id);
-                dispatch({ type: "move_block", fromIndex, toIndex });
-                setDraggedBlockId(null);
-              }}
-              onQuestionMove={(fromIndex, toIndex) =>
-                dispatch({
-                  type: "move_question",
-                  blockId: block.id,
-                  fromIndex,
-                  toIndex,
-                })
-              }
-              onQuestionDragStart={(questionId) => setDraggedQuestionId(questionId)}
-              onQuestionDrop={(questionId) => {
-                if (!draggedQuestionId || draggedQuestionId === questionId) {
-                  return;
-                }
-
-                const fromIndex = block.questions.findIndex((item) => item.id === draggedQuestionId);
-                const toIndex = block.questions.findIndex((item) => item.id === questionId);
-                dispatch({
-                  type: "move_question",
-                  blockId: block.id,
-                  fromIndex,
-                  toIndex,
-                });
-                setDraggedQuestionId(null);
-              }}
-              onAddQuestion={(questionType?: QuestionType) =>
-                dispatch({
-                  type: "add_question",
-                  blockId: block.id,
-                  questionType,
-                })
-              }
-              onQuestionFieldChange={(questionId, field, value) =>
-                dispatch({
-                  type: "update_question_field",
-                  blockId: block.id,
-                  questionId,
-                  field,
-                  value,
-                })
-              }
-              onQuestionTypeChange={(questionId, questionType) =>
-                dispatch({
-                  type: "set_question_type",
-                  blockId: block.id,
-                  questionId,
-                  questionType,
-                })
-              }
-              onQuestionToggle={(questionId, field, value) =>
-                dispatch({
-                  type: "set_question_toggle",
-                  blockId: block.id,
-                  questionId,
-                  field,
-                  value,
-                })
-              }
-              onDeleteQuestion={(questionId) =>
-                dispatch({
-                  type: "delete_question",
-                  blockId: block.id,
-                  questionId,
-                })
-              }
-              onDuplicateQuestion={(questionId) =>
-                dispatch({
-                  type: "duplicate_question",
-                  blockId: block.id,
-                  questionId,
-                })
-              }
-              onToggleQuestion={(questionId) =>
-                dispatch({
-                  type: "toggle_question",
-                  blockId: block.id,
-                  questionId,
-                })
-              }
-              onSetBlockRule={(rule: NavigationRule) =>
-                dispatch({
-                  type: "set_block_rule",
-                  blockId: block.id,
-                  rule,
-                })
-              }
-              onAddOption={(questionId) =>
-                dispatch({
-                  type: "add_option",
-                  blockId: block.id,
-                  questionId,
-                })
-              }
-              onUpdateOption={(questionId, optionId, value) =>
-                dispatch({
-                  type: "update_option",
-                  blockId: block.id,
-                  questionId,
-                  optionId,
-                  value,
-                })
-              }
-              onDeleteOption={(questionId, optionId) =>
-                dispatch({
-                  type: "delete_option",
-                  blockId: block.id,
-                  questionId,
-                  optionId,
-                })
-              }
-              onMoveOption={(questionId, fromIndex, toIndex) =>
-                dispatch({
-                  type: "move_option",
-                  blockId: block.id,
-                  questionId,
-                  fromIndex,
-                  toIndex,
-                })
-              }
-              onSetOptionRule={(questionId, optionId, rule) =>
-                dispatch({
-                  type: "set_option_rule",
-                  blockId: block.id,
-                  questionId,
-                  optionId,
-                  rule,
-                })
-              }
-            />
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={({ active }: DragStartEvent) => setActiveBlockId(active.id)}
+          onDragOver={({ over }) => setOverBlockId(over?.id ?? null)}
+          onDragCancel={() => {
+            setActiveBlockId(null);
+            setOverBlockId(null);
+          }}
+          onDragEnd={handleBlockDragEnd}
+        >
+          <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
+            <div className="block-list">
+              {form.blocks.map((block, blockIndex) => (
+                <BlockCard
+                  key={block.id}
+                  block={block}
+                  index={blockIndex}
+                  blockTargets={blockTargets}
+                  dropIndicator={getDropIndicator(blockIds, block.id, activeBlockId, overBlockId)}
+                  onUpdateBlock={(patch) =>
+                    dispatch({
+                      type: "update_block",
+                      blockId: block.id,
+                      patch,
+                    })
+                  }
+                  onDeleteBlock={() =>
+                    dispatch({
+                      type: "delete_block",
+                      blockId: block.id,
+                    })
+                  }
+                  onDuplicateBlock={() =>
+                    dispatch({
+                      type: "duplicate_block",
+                      blockId: block.id,
+                    })
+                  }
+                  onToggleBlock={() =>
+                    dispatch({
+                      type: "toggle_block",
+                      blockId: block.id,
+                    })
+                  }
+                  onQuestionMove={(fromIndex, toIndex) =>
+                    dispatch({
+                      type: "move_question",
+                      blockId: block.id,
+                      fromIndex,
+                      toIndex,
+                    })
+                  }
+                  onAddQuestion={(questionType?: QuestionType) =>
+                    dispatch({
+                      type: "add_question",
+                      blockId: block.id,
+                      questionType,
+                    })
+                  }
+                  onQuestionFieldChange={(questionId, field, value) =>
+                    dispatch({
+                      type: "update_question_field",
+                      blockId: block.id,
+                      questionId,
+                      field,
+                      value,
+                    })
+                  }
+                  onQuestionTypeChange={(questionId, questionType) =>
+                    dispatch({
+                      type: "set_question_type",
+                      blockId: block.id,
+                      questionId,
+                      questionType,
+                    })
+                  }
+                  onQuestionToggle={(questionId, field, value) =>
+                    dispatch({
+                      type: "set_question_toggle",
+                      blockId: block.id,
+                      questionId,
+                      field,
+                      value,
+                    })
+                  }
+                  onDeleteQuestion={(questionId) =>
+                    dispatch({
+                      type: "delete_question",
+                      blockId: block.id,
+                      questionId,
+                    })
+                  }
+                  onDuplicateQuestion={(questionId) =>
+                    dispatch({
+                      type: "duplicate_question",
+                      blockId: block.id,
+                      questionId,
+                    })
+                  }
+                  onToggleQuestion={(questionId) =>
+                    dispatch({
+                      type: "toggle_question",
+                      blockId: block.id,
+                      questionId,
+                    })
+                  }
+                  onSetBlockRule={(rule: NavigationRule) =>
+                    dispatch({
+                      type: "set_block_rule",
+                      blockId: block.id,
+                      rule,
+                    })
+                  }
+                  onAddOption={(questionId) =>
+                    dispatch({
+                      type: "add_option",
+                      blockId: block.id,
+                      questionId,
+                    })
+                  }
+                  onUpdateOption={(questionId, optionId, value) =>
+                    dispatch({
+                      type: "update_option",
+                      blockId: block.id,
+                      questionId,
+                      optionId,
+                      value,
+                    })
+                  }
+                  onDeleteOption={(questionId, optionId) =>
+                    dispatch({
+                      type: "delete_option",
+                      blockId: block.id,
+                      questionId,
+                      optionId,
+                    })
+                  }
+                  onMoveOption={(questionId, fromIndex, toIndex) =>
+                    dispatch({
+                      type: "move_option",
+                      blockId: block.id,
+                      questionId,
+                      fromIndex,
+                      toIndex,
+                    })
+                  }
+                  onSetOptionRule={(questionId, optionId, rule) =>
+                    dispatch({
+                      type: "set_option_rule",
+                      blockId: block.id,
+                      questionId,
+                      optionId,
+                      rule,
+                    })
+                  }
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
 
         <div className="add-row">
           <span className="eyebrow">Form structure</span>
