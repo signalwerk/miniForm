@@ -15,27 +15,10 @@ import { BlockCard } from "./BlockCard";
 import { createForm, validateForm } from "../lib/form-model";
 import { formReducer, getInitialFormState } from "../lib/form-reducer";
 import { getDropIndicator } from "../lib/dnd";
-import { getForm, saveForm } from "../lib/pocketbase";
+import { createBlankFormRecord, getForm, saveForm } from "../lib/pocketbase";
 import type { NavigationRule, QuestionType, StoredDraft } from "../lib/types";
 
 const LOCAL_STORAGE_KEY = "mini-form-editor-draft";
-
-const readDraft = (draftKey: string): StoredDraft => {
-  if (typeof window === "undefined") {
-    return { recordId: null, form: getInitialFormState() };
-  }
-
-  const raw = window.localStorage.getItem(draftKey);
-  if (!raw) {
-    return { recordId: null, form: getInitialFormState() };
-  }
-
-  try {
-    return JSON.parse(raw) as StoredDraft;
-  } catch {
-    return { recordId: null, form: getInitialFormState() };
-  }
-};
 
 const getErrorMessage = (error: unknown) => {
   if (error && typeof error === "object" && "message" in error) {
@@ -45,15 +28,15 @@ const getErrorMessage = (error: unknown) => {
   return "Something went wrong.";
 };
 
-const buildDraftKey = (formId: string) => `${LOCAL_STORAGE_KEY}:${formId}`;
+const buildDraftKey = (recordId: string) => `${LOCAL_STORAGE_KEY}:${recordId}`;
 
 export function EditorPage() {
   const navigate = useNavigate();
-  const { formId = "new" } = useParams();
+  const { recordId } = useParams();
   const [form, dispatch] = useReducer(formReducer, undefined, getInitialFormState);
-  const [activeRecordId, setActiveRecordId] = useState<string | null>(formId === "new" ? null : formId);
+  const [activeRecordId, setActiveRecordId] = useState<string | null>(recordId ?? null);
   const [isReady, setIsReady] = useState(false);
-  const [isLoading, setIsLoading] = useState(formId !== "new");
+  const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState("Local autosave is active.");
@@ -86,33 +69,24 @@ export function EditorPage() {
     const loadEditor = async () => {
       setIsReady(false);
       setLoadError("");
+      setIsLoading(true);
 
-      if (formId === "new") {
-        const draft = readDraft(buildDraftKey("new"));
+      if (!recordId) {
         if (!isCancelled) {
-          dispatch({
-            type: "replace",
-            payload: draft.form ?? createForm(),
-          });
-          setActiveRecordId(draft.recordId);
-          setSaveState("idle");
-          setSaveMessage("Loaded local draft.");
+          setLoadError("No form record was provided.");
           setIsLoading(false);
-          setIsReady(true);
         }
         return;
       }
 
-      setIsLoading(true);
-
       try {
-        const nextForm = await getForm(formId);
+        const nextForm = await getForm(recordId);
         if (!isCancelled) {
           dispatch({
             type: "replace",
             payload: nextForm,
           });
-          setActiveRecordId(formId);
+          setActiveRecordId(recordId);
           setSaveState("idle");
           setSaveMessage("Loaded form from PocketBase.");
           setIsLoading(false);
@@ -131,7 +105,7 @@ export function EditorPage() {
     return () => {
       isCancelled = true;
     };
-  }, [formId]);
+  }, [recordId]);
 
   useEffect(() => {
     if (!isReady) {
@@ -158,18 +132,23 @@ export function EditorPage() {
       setActiveRecordId(result.recordId);
       setSaveState("saved");
       setSaveMessage("Saved to PocketBase.");
-
-      if (formId === "new") {
-        navigate(`/forms/${result.recordId}`, { replace: true });
-      }
     } catch (error) {
       setSaveState("error");
       setSaveMessage(getErrorMessage(error));
     }
   };
 
-  const handleNewForm = () => {
-    navigate("/forms/new");
+  const handleNewForm = async () => {
+    setSaveState("saving");
+    setSaveMessage("Creating a new form in PocketBase...");
+
+    try {
+      const created = await createBlankFormRecord(createForm());
+      navigate(`/forms/${created.recordId}`);
+    } catch (error) {
+      setSaveState("error");
+      setSaveMessage(getErrorMessage(error));
+    }
   };
 
   const handleBlockDragEnd = ({ active, over }: DragEndEvent) => {
@@ -237,7 +216,7 @@ export function EditorPage() {
             <Link className="app-nav__link" to="/forms">
               Back to forms
             </Link>
-            <button type="button" className="button button--secondary" onClick={handleNewForm}>
+            <button type="button" className="button button--secondary" onClick={() => void handleNewForm()}>
               New form
             </button>
           </div>
@@ -271,7 +250,7 @@ export function EditorPage() {
             </div>
 
             <div className="button-group">
-              <button type="button" className="button button--secondary" onClick={handleNewForm}>
+              <button type="button" className="button button--secondary" onClick={() => void handleNewForm()}>
                 New form
               </button>
               <button type="button" onClick={() => void handleSave()}>
@@ -319,7 +298,7 @@ export function EditorPage() {
           <div className="meta-row">
             <p className={saveStateClassName}>{saveMessage}</p>
             <p className="helper-text">
-              Form ID <code>{form.id}</code>
+              Record ID <code>{activeRecordId ?? "Unavailable"}</code>
             </p>
           </div>
         </section>
@@ -384,9 +363,9 @@ export function EditorPage() {
                       questionType,
                     })
                   }
-              onQuestionFieldChange={(questionId, field, value) =>
-                dispatch({
-                  type: "update_question_field",
+                  onQuestionFieldChange={(questionId, field, value) =>
+                    dispatch({
+                      type: "update_question_field",
                       blockId: block.id,
                       questionId,
                       field,

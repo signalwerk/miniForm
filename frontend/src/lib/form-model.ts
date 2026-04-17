@@ -78,7 +78,6 @@ export const createBlock = (): FormBlock => ({
 });
 
 export const createForm = (): FormDefinition => ({
-  id: createId(),
   title: "",
   description: "",
   blocks: [createBlock()],
@@ -176,7 +175,8 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
   const validBlockIds = new Set(blocks.map((block) => block.id));
 
   return {
-    ...form,
+    title: form.title ?? "",
+    description: form.description ?? "",
     blocks: blocks.map((block) => ({
       ...block,
       afterBlock: normalizeNavigationRule(block.afterBlock, validBlockIds),

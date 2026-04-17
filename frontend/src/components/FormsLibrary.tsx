@@ -17,6 +17,12 @@ export function FormsLibrary({
   onRefresh,
   onLoad,
 }: FormsLibraryProps) {
+  const formatUpdated = (value: string) => {
+    console.log("formatUpdated", value);
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? "Recently changed" : new Date(parsed).toLocaleString();
+  };
+
   return (
     <aside className="panel">
       <div className="panel__header">
@@ -50,7 +56,7 @@ export function FormsLibrary({
                 onClick={() => onLoad(form.recordId)}
               >
                 <strong>{form.title}</strong>
-                <span>{new Date(form.updated).toLocaleString()}</span>
+                <span>{formatUpdated(form.updated)}</span>
               </button>
             </li>
           ))}

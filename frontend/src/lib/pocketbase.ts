@@ -24,10 +24,11 @@ export interface SaveFormResponse {
 }
 
 interface FormRecord extends RecordModel {
-  formId: string;
+  created?: string;
   title: string;
   description: string;
   data: FormDefinition;
+  updated?: string;
 }
 
 export const getCurrentUser = () => pb.authStore.model;
@@ -59,20 +60,41 @@ export const logoutUser = () => {
 };
 
 export const listForms = async (): Promise<FormSummary[]> => {
-  const records = await pb.collection(COLLECTION_NAME).getFullList<FormRecord>({
-    sort: "-updated",
-  });
+  const records = await pb.collection(COLLECTION_NAME).getFullList<FormRecord>();
 
-  return records.map((record) => ({
-    recordId: record.id,
-    title: record.title || "Untitled form",
-    updated: record.updated,
-  }));
+  return records
+    .map((record) => ({
+      recordId: record.id,
+      title: record.title || "Untitled form",
+      updated: record.updated || record.created || "",
+    }))
+    .sort((left, right) => {
+      const leftTime = Number.isNaN(Date.parse(left.updated)) ? 0 : Date.parse(left.updated);
+      const rightTime = Number.isNaN(Date.parse(right.updated)) ? 0 : Date.parse(right.updated);
+      return rightTime - leftTime;
+    });
 };
 
 export const getForm = async (recordId: string): Promise<FormDefinition> => {
   const record = await pb.collection(COLLECTION_NAME).getOne<FormRecord>(recordId);
   return record.data;
+};
+
+export const createBlankFormRecord = async (form: FormDefinition): Promise<SaveFormResponse> => {
+  const user = getCurrentUser();
+
+  if (!user?.id) {
+    throw new Error("You need to be logged in before creating a form.");
+  }
+
+  const created = await pb.collection(COLLECTION_NAME).create<FormRecord>({
+    owner: user.id,
+    title: form.title,
+    description: form.description,
+    data: form,
+  });
+
+  return { recordId: created.id };
 };
 
 export const saveForm = async (
@@ -87,7 +109,6 @@ export const saveForm = async (
 
   const payload = {
     owner: user.id,
-    formId: form.id,
     title: form.title,
     description: form.description,
     data: form,

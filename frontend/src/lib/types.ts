@@ -43,7 +43,6 @@ export interface FormBlock {
 }
 
 export interface FormDefinition {
-  id: string;
   title: string;
   description: string;
   blocks: FormBlock[];

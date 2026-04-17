@@ -58,7 +58,7 @@ function App() {
         <Route path="/auth" element={user ? <Navigate to="/forms" replace /> : <AuthPage />} />
         <Route element={<RequireAuth />}>
           <Route path="/forms" element={<FormsOverviewPage />} />
-          <Route path="/forms/:formId" element={<EditorPage />} />
+          <Route path="/forms/:recordId" element={<EditorPage />} />
         </Route>
         <Route path="*" element={<Navigate to={user ? "/forms" : "/auth"} replace />} />
       </Routes>
