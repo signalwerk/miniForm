@@ -10,9 +10,9 @@ import {
   duplicateBlock,
   duplicateQuestion,
   isChoiceQuestion,
+  isContentQuestion,
   isSingleChoiceQuestion,
   isTextQuestion,
-  isTitleDescriptionQuestion,
   moveItem,
   normalizeForm,
   normalizeQuestionType,
@@ -223,8 +223,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     case "add_question": {
       const question = createQuestion(action.questionType);
       const questionTranslationEntries = createTranslationEntries([
-        question.title,
-        ...(isTitleDescriptionQuestion(question) ? [question.description] : []),
+        ...(isContentQuestion(question) ? [question.content] : [question.title]),
         ...(isTextQuestion(question) ? [question.placeholder] : []),
         ...(isChoiceQuestion(question) ? question.options.map((option) => option.label) : []),
       ]);
@@ -273,8 +272,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         translations: {
           ...nextState.translations,
           ...createTranslationEntries([
-            targetQuestion.title,
-            ...(isTitleDescriptionQuestion(targetQuestion) ? [targetQuestion.description] : []),
+            ...(isContentQuestion(targetQuestion) ? [targetQuestion.content] : [targetQuestion.title]),
             ...(isTextQuestion(targetQuestion) ? [targetQuestion.placeholder] : []),
             ...(isChoiceQuestion(targetQuestion) ? targetQuestion.options.map((option) => option.label) : []),
             ...(isChoiceQuestion(targetQuestion) && targetQuestion.otherOptionLabel
@@ -362,7 +360,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
             }
 
             if (action.field === "required") {
-              if (isTitleDescriptionQuestion(question)) {
+              if (isContentQuestion(question)) {
                 return question;
               }
 

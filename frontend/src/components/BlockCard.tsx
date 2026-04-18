@@ -225,9 +225,9 @@ export function BlockCard({
               <button
                 type="button"
                 className="button button--secondary"
-                onClick={() => onAddQuestion("title_description")}
+                onClick={() => onAddQuestion("content")}
               >
-                Title & Description
+                Content
               </button>
               <button type="button" className="button button--secondary" onClick={() => onAddQuestion("text")}>
                 Text

@@ -1,5 +1,5 @@
 export type QuestionType =
-  | "title_description"
+  | "content"
   | "text"
   | "single_choice"
   | "multiple_choice";
@@ -31,25 +31,28 @@ export interface FormOption {
   navigation: NavigationRule;
 }
 
-interface BaseQuestion {
+interface CollapsibleQuestion {
   id: string;
-  title: TranslationKey;
   isCollapsed: boolean;
 }
 
-export interface TitleDescriptionQuestion extends BaseQuestion {
-  type: "title_description";
-  description: TranslationKey;
+export interface ContentQuestion extends CollapsibleQuestion {
+  type: "content";
+  content: TranslationKey;
 }
 
-export interface TextQuestion extends BaseQuestion {
+interface PromptQuestion extends CollapsibleQuestion {
+  title: TranslationKey;
+}
+
+export interface TextQuestion extends PromptQuestion {
   type: "text";
   required: boolean;
   multilineText: boolean;
   placeholder: TranslationKey;
 }
 
-interface BaseChoiceQuestion extends BaseQuestion {
+interface BaseChoiceQuestion extends PromptQuestion {
   required: boolean;
   options: FormOption[];
   allowOther: boolean;
@@ -70,7 +73,7 @@ export interface MultipleChoiceQuestion extends BaseChoiceQuestion {
 export type ChoiceQuestion = SingleChoiceQuestion | MultipleChoiceQuestion;
 
 export type FormQuestion =
-  | TitleDescriptionQuestion
+  | ContentQuestion
   | TextQuestion
   | SingleChoiceQuestion
   | MultipleChoiceQuestion;
@@ -88,24 +91,27 @@ export interface PersistedFormOption {
   navigation?: NavigationRule;
 }
 
-interface BasePersistedQuestion {
+interface PersistedQuestionBase {
   id: string;
+}
+
+export interface PersistedContentQuestion extends PersistedQuestionBase {
+  type: "content";
+  content: TranslationKey;
+}
+
+interface PersistedPromptQuestion extends PersistedQuestionBase {
   title: TranslationKey;
 }
 
-export interface PersistedTitleDescriptionQuestion extends BasePersistedQuestion {
-  type: "title_description";
-  description: TranslationKey;
-}
-
-export interface PersistedTextQuestion extends BasePersistedQuestion {
+export interface PersistedTextQuestion extends PersistedPromptQuestion {
   type: "text";
   required: boolean;
   multilineText: boolean;
   placeholder: TranslationKey;
 }
 
-interface BasePersistedChoiceQuestion extends BasePersistedQuestion {
+interface BasePersistedChoiceQuestion extends PersistedPromptQuestion {
   required: boolean;
   options: PersistedFormOption[];
   allowOther: boolean;
@@ -124,7 +130,7 @@ export interface PersistedMultipleChoiceQuestion extends BasePersistedChoiceQues
 }
 
 export type PersistedFormQuestion =
-  | PersistedTitleDescriptionQuestion
+  | PersistedContentQuestion
   | PersistedTextQuestion
   | PersistedSingleChoiceQuestion
   | PersistedMultipleChoiceQuestion;

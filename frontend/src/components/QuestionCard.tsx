@@ -4,9 +4,9 @@ import {
   QUESTION_TYPE_OPTIONS,
   getTranslationValue,
   isChoiceQuestion,
+  isContentQuestion,
   isSingleChoiceQuestion,
   isTextQuestion,
-  isTitleDescriptionQuestion,
 } from "../lib/form-model";
 import type { DropIndicatorPosition } from "../lib/dnd";
 import type {
@@ -84,11 +84,15 @@ export function QuestionCard({
     id: question.id,
   });
 
-  const isInformational = isTitleDescriptionQuestion(question);
+  const isContent = isContentQuestion(question);
   const canRouteByAnswer = isSingleChoiceQuestion(question);
   const isText = isTextQuestion(question);
   const isSingleChoice = isSingleChoiceQuestion(question);
-  const questionTitle = getTranslationValue(translations, question.title, defaultLanguage);
+  const questionTitle = getTranslationValue(
+    translations,
+    isContent ? question.content : question.title,
+    defaultLanguage,
+  );
 
   return (
     <article
@@ -115,7 +119,7 @@ export function QuestionCard({
           />
           <div>
             <p className="eyebrow">Question {index + 1}</p>
-            <h3>{questionTitle || (isInformational ? "Untitled title" : "Untitled question")}</h3>
+            <h3>{questionTitle || (isContent ? "Untitled content" : "Untitled question")}</h3>
           </div>
         </div>
 
@@ -151,31 +155,31 @@ export function QuestionCard({
 
       {!question.isCollapsed ? (
         <div className="question-card__body">
-          <TranslationInput
-            id={`question-title-${question.id}`}
-            label={isInformational ? "Title" : "Prompt"}
-            translationKey={question.title}
-            translations={translations}
-            languages={languages}
-            defaultLanguage={defaultLanguage}
-            placeholder={isInformational ? "Add a title" : "Ask your question"}
-            onChange={onUpdateTranslation}
-          />
-
-          {isInformational ? (
+          {isContent ? (
             <TranslationInput
-              id={`question-description-${question.id}`}
-              label="Description"
-              translationKey={question.description}
+              id={`question-content-${question.id}`}
+              label="Content"
+              translationKey={question.content}
               translations={translations}
               languages={languages}
               defaultLanguage={defaultLanguage}
-              placeholder="Add explanatory text inside this block"
+              placeholder="Add content inside this block"
               multiline
               rows={4}
               onChange={onUpdateTranslation}
             />
-          ) : null}
+          ) : (
+            <TranslationInput
+              id={`question-title-${question.id}`}
+              label="Prompt"
+              translationKey={question.title}
+              translations={translations}
+              languages={languages}
+              defaultLanguage={defaultLanguage}
+              placeholder="Ask your question"
+              onChange={onUpdateTranslation}
+            />
+          )}
 
           {isText ? (
             <TranslationInput
@@ -209,7 +213,7 @@ export function QuestionCard({
 
           <footer className="question-card__footer">
             <div className="toggle-row">
-              {!isInformational ? (
+              {!isContent ? (
                 <label className="checkbox">
                   <input
                     type="checkbox"
