@@ -12,11 +12,11 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from "react-router-dom";
 import { BlockCard } from "./BlockCard";
-import { createForm, validateForm } from "../lib/form-model";
+import { createForm, validateForm, validateI18nSettings } from "../lib/form-model";
 import { formReducer, getInitialFormState } from "../lib/form-reducer";
 import { getDropIndicator } from "../lib/dnd";
 import { createBlankFormRecord, getForm, saveForm } from "../lib/pocketbase";
-import type { FormDefinition, NavigationRule, QuestionType } from "../lib/types";
+import type { FormDefinition, NavigationRule, QuestionType, TranslationKey } from "../lib/types";
 
 const getErrorMessage = (error: unknown) => {
   if (error && typeof error === "object" && "message" in error) {
@@ -65,6 +65,7 @@ export function EditorPage() {
     [form.blocks],
   );
 
+  const i18nIssues = useMemo(() => validateI18nSettings(form), [form]);
   const validationIssues = useMemo(() => validateForm(form), [form]);
   const blocker = useBlocker(() => hasPendingChanges && !skipNavigationWarningRef.current);
 
@@ -77,6 +78,13 @@ export function EditorPage() {
       setHasPendingChanges(false);
       setSaveState("saved");
       setSaveMessage("All changes saved to PocketBase.");
+      return;
+    }
+
+    if (i18nIssues.length > 0) {
+      setHasPendingChanges(true);
+      setSaveState("error");
+      setSaveMessage("Autosave paused. Fix the language settings before saving.");
       return;
     }
 
@@ -196,7 +204,19 @@ export function EditorPage() {
     }
 
     setHasPendingChanges(true);
-    setSaveState((current) => (current === "error" || current === "saving" ? current : "dirty"));
+
+    if (i18nIssues.length > 0) {
+      if (saveTimeoutRef.current !== null) {
+        window.clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = null;
+      }
+
+      setSaveState("error");
+      setSaveMessage("Autosave paused. Fix the language settings before saving.");
+      return;
+    }
+
+    setSaveState((current) => (current === "saving" ? current : "dirty"));
     setSaveMessage("Changes pending autosave...");
 
     if (saveTimeoutRef.current !== null) {
@@ -214,7 +234,7 @@ export function EditorPage() {
         saveTimeoutRef.current = null;
       }
     };
-  }, [activeRecordId, form, isReady]);
+  }, [activeRecordId, form, i18nIssues, isReady]);
 
   useBeforeUnload((event) => {
     if (!hasPendingChanges) {
@@ -327,7 +347,7 @@ export function EditorPage() {
         <section className="panel">
           <p className="eyebrow">Step 3</p>
           <h2>Form editor</h2>
-          <p>Edit one form at a time. Blocks, questions, and options can all be reordered with the drag handles.</p>
+          <p>Edit one form at a time. Question and option text now use per-field language switching.</p>
           <div className="button-group">
             <Link className="app-nav__link" to="/forms">
               Back to forms
@@ -342,11 +362,11 @@ export function EditorPage() {
           <div className="panel__header">
             <div>
               <p className="eyebrow">Validation</p>
-              <h2>Flow health</h2>
+              <h2>Flow and languages</h2>
             </div>
           </div>
           {validationIssues.length === 0 ? (
-            <p className="status-pill status-pill--ok">No broken block references.</p>
+            <p className="status-pill status-pill--ok">Everything is valid for autosave.</p>
           ) : (
             <ul className="issue-list">
               {validationIssues.map((issue) => (
@@ -408,6 +428,81 @@ export function EditorPage() {
             />
           </div>
 
+          <section className="language-settings">
+            <div className="panel__header">
+              <div>
+                <p className="eyebrow">Languages</p>
+                <h3>Translations</h3>
+                <p className="helper-text">Language ids are generated automatically. Only the label is editable.</p>
+              </div>
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() =>
+                  dispatch({
+                    type: "add_language",
+                  })
+                }
+              >
+                Add language
+              </button>
+            </div>
+
+            <div className="language-settings__list">
+              {form.i18n.languages.map((language) => (
+                <div key={language.id} className="language-settings__row">
+                  <div className="language-settings__field">
+                    <label htmlFor={`language-label-${language.id}`}>Label</label>
+                    <input
+                      id={`language-label-${language.id}`}
+                      type="text"
+                      value={language.label}
+                      placeholder="English"
+                      onChange={(event) =>
+                        dispatch({
+                          type: "update_language_label",
+                          languageId: language.id,
+                          label: event.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="language-settings__default">
+                    <label className="checkbox">
+                      <input
+                        type="radio"
+                        name="default-language"
+                        checked={form.i18n.defaultLanguage === language.id}
+                        onChange={() =>
+                          dispatch({
+                            type: "set_default_language",
+                            languageId: language.id,
+                          })
+                        }
+                      />
+                      <span>Default</span>
+                    </label>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="button button--ghost button--danger"
+                    disabled={form.i18n.languages.length <= 1}
+                    onClick={() =>
+                      dispatch({
+                        type: "delete_language",
+                        languageId: language.id,
+                      })
+                    }
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+
           <div className="meta-row">
             <p className={saveStateClassName}>{saveMessage}</p>
             <p className="helper-text">
@@ -436,6 +531,9 @@ export function EditorPage() {
                   index={blockIndex}
                   blockTargets={blockTargets}
                   dropIndicator={getDropIndicator(blockIds, block.id, activeBlockId, overBlockId)}
+                  languages={form.i18n.languages}
+                  defaultLanguage={form.i18n.defaultLanguage}
+                  translations={form.translations}
                   onUpdateBlock={(patch) =>
                     dispatch({
                       type: "update_block",
@@ -476,12 +574,11 @@ export function EditorPage() {
                       questionType,
                     })
                   }
-                  onQuestionFieldChange={(questionId, field, value) =>
+                  onUpdateTranslation={(translationKey: TranslationKey, languageId: string, value: string) =>
                     dispatch({
-                      type: "update_question_field",
-                      blockId: block.id,
-                      questionId,
-                      field,
+                      type: "update_translation",
+                      translationKey,
+                      languageId,
                       value,
                     })
                   }
@@ -537,15 +634,6 @@ export function EditorPage() {
                       questionId,
                     })
                   }
-                  onUpdateOption={(questionId, optionId, value) =>
-                    dispatch({
-                      type: "update_option",
-                      blockId: block.id,
-                      questionId,
-                      optionId,
-                      value,
-                    })
-                  }
                   onDeleteOption={(questionId, optionId) =>
                     dispatch({
                       type: "delete_option",
@@ -563,41 +651,40 @@ export function EditorPage() {
                       toIndex,
                     })
                   }
-              onSetOptionRule={(questionId, optionId, rule) =>
-                dispatch({
-                  type: "set_option_rule",
-                  blockId: block.id,
-                  questionId,
-                  optionId,
-                  rule,
-                })
-              }
-              onSetOtherOptionRule={(questionId, rule) =>
-                dispatch({
-                  type: "set_other_option_rule",
-                  blockId: block.id,
-                  questionId,
-                  rule,
-                })
-              }
-            />
-          ))}
+                  onSetOptionRule={(questionId, optionId, rule) =>
+                    dispatch({
+                      type: "set_option_rule",
+                      blockId: block.id,
+                      questionId,
+                      optionId,
+                      rule,
+                    })
+                  }
+                  onSetOtherOptionRule={(questionId, rule) =>
+                    dispatch({
+                      type: "set_other_option_rule",
+                      blockId: block.id,
+                      questionId,
+                      rule,
+                    })
+                  }
+                />
+              ))}
             </div>
           </SortableContext>
         </DndContext>
 
-        <div className="add-row">
-          <span className="eyebrow">Form structure</span>
-          <div className="button-group">
-            <button
-              type="button"
-              className="button button--secondary"
-              onClick={() => dispatch({ type: "add_block" })}
-            >
-              Add block
-            </button>
-          </div>
-        </div>
+        <button
+          type="button"
+          className="button button--secondary"
+          onClick={() =>
+            dispatch({
+              type: "add_block",
+            })
+          }
+        >
+          Add block
+        </button>
       </section>
     </main>
   );

@@ -12,10 +12,17 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { getDropIndicator } from "../lib/dnd";
-import { supportsOptionNavigation } from "../lib/form-model";
-import type { FormQuestion, NavigationRule } from "../lib/types";
+import { getTranslationValue, supportsOptionNavigation } from "../lib/form-model";
+import type {
+  FormLanguage,
+  FormQuestion,
+  FormTranslations,
+  NavigationRule,
+  TranslationKey,
+} from "../lib/types";
 import { DragHandle } from "./DragHandle";
 import { FlowRuleFields } from "./FlowRuleFields";
+import { TranslationInput } from "./TranslationInput";
 
 interface BlockTarget {
   id: string;
@@ -25,9 +32,11 @@ interface BlockTarget {
 interface OptionListProps {
   question: FormQuestion;
   blockTargets: BlockTarget[];
+  languages: FormLanguage[];
+  defaultLanguage: string;
+  translations: FormTranslations;
   onAddOption: () => void;
-  onUpdateOption: (optionId: string, value: string) => void;
-  onUpdateOtherOptionLabel: (value: string) => void;
+  onUpdateTranslation: (translationKey: TranslationKey, languageId: string, value: string) => void;
   onToggleOther: (value: boolean) => void;
   onDeleteOption: (optionId: string) => void;
   onMoveOption: (fromIndex: number, toIndex: number) => void;
@@ -37,28 +46,34 @@ interface OptionListProps {
 
 interface OptionItemProps {
   optionId: string;
+  labelKey: TranslationKey;
   index: number;
-  label: string;
   canDelete: boolean;
   questionType: FormQuestion["type"];
   navigation: NavigationRule;
   blockTargets: BlockTarget[];
+  languages: FormLanguage[];
+  defaultLanguage: string;
+  translations: FormTranslations;
   dropIndicator: "before" | "after" | null;
-  onUpdateOption: (optionId: string, value: string) => void;
+  onUpdateTranslation: (translationKey: TranslationKey, languageId: string, value: string) => void;
   onDeleteOption: (optionId: string) => void;
   onSetOptionRule: (optionId: string, rule: NavigationRule) => void;
 }
 
 function OptionItem({
   optionId,
+  labelKey,
   index,
-  label,
   canDelete,
   questionType,
   navigation,
   blockTargets,
+  languages,
+  defaultLanguage,
+  translations,
   dropIndicator,
-  onUpdateOption,
+  onUpdateTranslation,
   onDeleteOption,
   onSetOptionRule,
 }: OptionItemProps) {
@@ -98,13 +113,16 @@ function OptionItem({
             label={`Reorder option ${index + 1}`}
           />
           <div className="option-list__main">
-            <label htmlFor={`option-${optionId}`}>Option {index + 1}</label>
-            <input
+            <TranslationInput
               id={`option-${optionId}`}
-              type="text"
-              value={label}
+              label={`Option ${index + 1}`}
+              translationKey={labelKey}
+              translations={translations}
+              languages={languages}
+              defaultLanguage={defaultLanguage}
               placeholder={`Option ${index + 1}`}
-              onChange={(event) => onUpdateOption(optionId, event.target.value)}
+              variant="option"
+              onChange={onUpdateTranslation}
             />
           </div>
         </div>
@@ -139,9 +157,11 @@ function OptionItem({
 export function OptionList({
   question,
   blockTargets,
+  languages,
+  defaultLanguage,
+  translations,
   onAddOption,
-  onUpdateOption,
-  onUpdateOtherOptionLabel,
+  onUpdateTranslation,
   onToggleOther,
   onDeleteOption,
   onMoveOption,
@@ -158,6 +178,7 @@ export function OptionList({
       },
     }),
   );
+  const otherLabel = getTranslationValue(translations, question.otherOptionLabelKey, defaultLanguage);
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveOptionId(null);
@@ -200,14 +221,17 @@ export function OptionList({
             <OptionItem
               key={option.id}
               optionId={option.id}
+              labelKey={option.labelKey}
               index={index}
-              label={option.label}
               canDelete={question.options.length > 1}
               questionType={question.routeByAnswer ? question.type : "multiple_choice"}
               navigation={option.navigation}
               blockTargets={blockTargets}
+              languages={languages}
+              defaultLanguage={defaultLanguage}
+              translations={translations}
               dropIndicator={getDropIndicator(optionIds, option.id, activeOptionId, overOptionId)}
-              onUpdateOption={onUpdateOption}
+              onUpdateTranslation={onUpdateTranslation}
               onDeleteOption={onDeleteOption}
               onSetOptionRule={onSetOptionRule}
             />
@@ -232,19 +256,22 @@ export function OptionList({
         </label>
       ) : null}
 
-      {question.allowOther ? (
+      {question.allowOther && question.otherOptionLabelKey ? (
         <article className="option-list__item option-list__item--other">
           <div className="option-list__row">
             <div className="card-title">
               <div className="option-list__bullet" aria-hidden="true" />
               <div className="option-list__main">
-                <label htmlFor={`other-option-${question.id}`}>Other label</label>
-                <input
+                <TranslationInput
                   id={`other-option-${question.id}`}
-                  type="text"
-                  value={question.otherOptionLabel}
+                  label="Other label"
+                  translationKey={question.otherOptionLabelKey}
+                  translations={translations}
+                  languages={languages}
+                  defaultLanguage={defaultLanguage}
                   placeholder="Other"
-                  onChange={(event) => onUpdateOtherOptionLabel(event.target.value)}
+                  variant="option"
+                  onChange={onUpdateTranslation}
                 />
               </div>
             </div>
@@ -261,6 +288,11 @@ export function OptionList({
               </div>
             ) : null}
           </div>
+          {!otherLabel && defaultLanguage ? (
+            <p className="helper-text option-list__missing-note">
+              The default language value for “Other” is still empty.
+            </p>
+          ) : null}
         </article>
       ) : null}
     </div>

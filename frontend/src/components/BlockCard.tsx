@@ -12,7 +12,14 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { getDropIndicator, type DropIndicatorPosition } from "../lib/dnd";
-import type { FormBlock, NavigationRule, QuestionType } from "../lib/types";
+import type {
+  FormBlock,
+  FormLanguage,
+  FormTranslations,
+  NavigationRule,
+  QuestionType,
+  TranslationKey,
+} from "../lib/types";
 import { DragHandle } from "./DragHandle";
 import { FlowRuleFields } from "./FlowRuleFields";
 import { QuestionCard } from "./QuestionCard";
@@ -27,17 +34,16 @@ interface BlockCardProps {
   index: number;
   blockTargets: BlockTarget[];
   dropIndicator: DropIndicatorPosition;
+  languages: FormLanguage[];
+  defaultLanguage: string;
+  translations: FormTranslations;
   onUpdateBlock: (patch: Partial<FormBlock>) => void;
   onDeleteBlock: () => void;
   onDuplicateBlock: () => void;
   onToggleBlock: () => void;
   onQuestionMove: (fromIndex: number, toIndex: number) => void;
   onAddQuestion: (type?: QuestionType) => void;
-  onQuestionFieldChange: (
-    questionId: string,
-    field: "title" | "description" | "otherOptionLabel",
-    value: string,
-  ) => void;
+  onUpdateTranslation: (translationKey: TranslationKey, languageId: string, value: string) => void;
   onQuestionTypeChange: (questionId: string, questionType: QuestionType) => void;
   onQuestionToggle: (
     questionId: string,
@@ -49,7 +55,6 @@ interface BlockCardProps {
   onToggleQuestion: (questionId: string) => void;
   onSetBlockRule: (rule: NavigationRule) => void;
   onAddOption: (questionId: string) => void;
-  onUpdateOption: (questionId: string, optionId: string, value: string) => void;
   onDeleteOption: (questionId: string, optionId: string) => void;
   onMoveOption: (questionId: string, fromIndex: number, toIndex: number) => void;
   onSetOptionRule: (questionId: string, optionId: string, rule: NavigationRule) => void;
@@ -61,13 +66,16 @@ export function BlockCard({
   index,
   blockTargets,
   dropIndicator,
+  languages,
+  defaultLanguage,
+  translations,
   onUpdateBlock,
   onDeleteBlock,
   onDuplicateBlock,
   onToggleBlock,
   onQuestionMove,
   onAddQuestion,
-  onQuestionFieldChange,
+  onUpdateTranslation,
   onQuestionTypeChange,
   onQuestionToggle,
   onDeleteQuestion,
@@ -75,7 +83,6 @@ export function BlockCard({
   onToggleQuestion,
   onSetBlockRule,
   onAddOption,
-  onUpdateOption,
   onDeleteOption,
   onMoveOption,
   onSetOptionRule,
@@ -217,18 +224,16 @@ export function BlockCard({
                         activeQuestionId,
                         overQuestionId,
                       )}
-                      onTitleChange={(value) => onQuestionFieldChange(question.id, "title", value)}
-                      onDescriptionChange={(value) => onQuestionFieldChange(question.id, "description", value)}
-                      onOtherOptionLabelChange={(value) =>
-                        onQuestionFieldChange(question.id, "otherOptionLabel", value)
-                      }
+                      languages={languages}
+                      defaultLanguage={defaultLanguage}
+                      translations={translations}
+                      onUpdateTranslation={onUpdateTranslation}
                       onTypeChange={(value) => onQuestionTypeChange(question.id, value)}
                       onToggle={(field, value) => onQuestionToggle(question.id, field, value)}
                       onDuplicate={() => onDuplicateQuestion(question.id)}
                       onDelete={() => onDeleteQuestion(question.id)}
                       onCollapse={() => onToggleQuestion(question.id)}
                       onAddOption={() => onAddOption(question.id)}
-                      onUpdateOption={(optionId, value) => onUpdateOption(question.id, optionId, value)}
                       onDeleteOption={(optionId) => onDeleteOption(question.id, optionId)}
                       onMoveOption={(fromIndex, toIndex) => onMoveOption(question.id, fromIndex, toIndex)}
                       onSetOptionRule={(optionId, rule) => onSetOptionRule(question.id, optionId, rule)}

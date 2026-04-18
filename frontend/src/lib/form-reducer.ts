@@ -1,21 +1,36 @@
 import {
-  cloneBlock,
-  cloneQuestion,
   createBlock,
   createForm,
+  createFormLanguage,
   createNavigationRule,
   createOption,
   createQuestion,
+  createTranslationEntries,
+  createTranslationKey,
+  duplicateBlock,
+  duplicateQuestion,
   moveItem,
   normalizeForm,
   normalizeQuestionType,
   supportsOptions,
 } from "./form-model";
-import type { FormBlock, FormDefinition, NavigationRule, QuestionType } from "./types";
+import type {
+  FormBlock,
+  FormDefinition,
+  LanguageId,
+  NavigationRule,
+  QuestionType,
+  TranslationKey,
+} from "./types";
 
 export type FormAction =
   | { type: "replace"; payload: FormDefinition }
   | { type: "set_form_field"; field: "title" | "description"; value: string }
+  | { type: "add_language" }
+  | { type: "update_language_label"; languageId: string; label: string }
+  | { type: "delete_language"; languageId: string }
+  | { type: "set_default_language"; languageId: string }
+  | { type: "update_translation"; translationKey: TranslationKey; languageId: LanguageId; value: string }
   | { type: "add_block"; afterBlockId?: string }
   | { type: "update_block"; blockId: string; patch: Partial<FormBlock> }
   | { type: "delete_block"; blockId: string }
@@ -23,13 +38,6 @@ export type FormAction =
   | { type: "toggle_block"; blockId: string }
   | { type: "move_block"; fromIndex: number; toIndex: number }
   | { type: "add_question"; blockId: string; questionType?: QuestionType }
-  | {
-      type: "update_question_field";
-      blockId: string;
-      questionId: string;
-      field: "title" | "description" | "otherOptionLabel";
-      value: string;
-    }
   | { type: "set_question_type"; blockId: string; questionId: string; questionType: QuestionType }
   | {
       type: "set_question_toggle";
@@ -44,7 +52,6 @@ export type FormAction =
   | { type: "move_question"; blockId: string; fromIndex: number; toIndex: number }
   | { type: "set_block_rule"; blockId: string; rule: NavigationRule }
   | { type: "add_option"; blockId: string; questionId: string }
-  | { type: "update_option"; blockId: string; questionId: string; optionId: string; value: string }
   | { type: "delete_option"; blockId: string; questionId: string; optionId: string }
   | { type: "move_option"; blockId: string; questionId: string; fromIndex: number; toIndex: number }
   | { type: "set_option_rule"; blockId: string; questionId: string; optionId: string; rule: NavigationRule }
@@ -70,6 +77,85 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         ...state,
         [action.field]: action.value,
       };
+
+    case "add_language": {
+      const language = createFormLanguage(state.i18n.languages);
+
+      return normalizeForm({
+        ...state,
+        i18n: {
+          ...state.i18n,
+          languages: [...state.i18n.languages, language],
+        },
+      });
+    }
+
+    case "update_language_label":
+      return normalizeForm({
+        ...state,
+        i18n: {
+          ...state.i18n,
+          languages: state.i18n.languages.map((language) =>
+            language.id === action.languageId
+              ? {
+                  ...language,
+                  label: action.label,
+                }
+              : language,
+          ),
+        },
+      });
+    
+
+    case "delete_language": {
+      if (state.i18n.languages.length <= 1) {
+        return state;
+      }
+
+      const remainingLanguages = state.i18n.languages.filter((language) => language.id !== action.languageId);
+      const translations = Object.fromEntries(
+        Object.entries(state.translations).map(([translationKey, values]) => [
+          translationKey,
+          Object.fromEntries(Object.entries(values).filter(([languageId]) => languageId !== action.languageId)),
+        ]),
+      );
+
+      return normalizeForm({
+        ...state,
+        translations,
+        i18n: {
+          languages: remainingLanguages,
+          defaultLanguage:
+            state.i18n.defaultLanguage === action.languageId
+              ? remainingLanguages[0]?.id ?? ""
+              : state.i18n.defaultLanguage,
+        },
+      });
+    }
+
+    case "set_default_language":
+      return normalizeForm({
+        ...state,
+        i18n: {
+          ...state.i18n,
+          defaultLanguage: action.languageId,
+        },
+      });
+
+    case "update_translation": {
+      const currentValues = state.translations[action.translationKey] ?? {};
+
+      return {
+        ...state,
+        translations: {
+          ...state.translations,
+          [action.translationKey]: {
+            ...currentValues,
+            [action.languageId]: action.value,
+          },
+        },
+      };
+    }
 
     case "add_block": {
       const newBlock = createBlock();
@@ -103,9 +189,18 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         return state;
       }
 
+      const duplicated = duplicateBlock(state.blocks[index], state.translations);
       const nextBlocks = [...state.blocks];
-      nextBlocks.splice(index + 1, 0, cloneBlock(state.blocks[index]));
-      return normalizeForm({ ...state, blocks: nextBlocks });
+      nextBlocks.splice(index + 1, 0, duplicated.block);
+
+      return normalizeForm({
+        ...state,
+        translations: {
+          ...state.translations,
+          ...duplicated.translations,
+        },
+        blocks: nextBlocks,
+      });
     }
 
     case "toggle_block":
@@ -122,29 +217,32 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         blocks: moveItem(state.blocks, action.fromIndex, action.toIndex),
       });
 
-    case "add_question":
-      return normalizeForm(
-        updateBlocks(state, action.blockId, (block) => ({
-          ...block,
-          isCollapsed: false,
-          questions: [...block.questions, createQuestion(action.questionType)],
-        })),
-      );
+    case "add_question": {
+      const question = createQuestion(action.questionType);
+      const questionTranslationEntries = createTranslationEntries([
+        question.titleKey,
+        question.descriptionKey,
+        ...question.options.map((option) => option.labelKey),
+      ]);
 
-    case "update_question_field":
       return normalizeForm(
-        updateBlocks(state, action.blockId, (block) => ({
-          ...block,
-          questions: block.questions.map((question) =>
-            question.id === action.questionId
-              ? {
-                  ...question,
-                  [action.field]: action.value,
-                }
-              : question,
-          ),
-        })),
+        updateBlocks(
+          {
+            ...state,
+            translations: {
+              ...state.translations,
+              ...questionTranslationEntries,
+            },
+          },
+          action.blockId,
+          (block) => ({
+            ...block,
+            isCollapsed: false,
+            questions: [...block.questions, question],
+          }),
+        ),
       );
+    }
 
     case "set_question_type":
       return normalizeForm(
@@ -158,49 +256,81 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         })),
       );
 
-    case "set_question_toggle":
-      return normalizeForm(
+    case "set_question_toggle": {
+      const nextState = normalizeForm(
         updateBlocks(state, action.blockId, (block) => ({
           ...block,
-          questions: block.questions.map((question) =>
-            question.id === action.questionId
-              ? {
-                  ...question,
-                  [action.field]:
-                    action.field === "allowOther" && !supportsOptions(question.type)
-                      ? false
-                      : action.field === "routeByAnswer" &&
-                          question.type !== "single_choice"
-                        ? false
-                        : action.field === "multilineText" && question.type !== "text"
-                          ? false
-                          : action.field === "showAsDropdown" && question.type !== "single_choice"
-                        ? false
-                        : action.value,
-                  allowOther:
-                    action.field === "showAsDropdown"
-                      ? action.value
-                        ? false
-                        : question.allowOther
-                      : action.field === "allowOther" && !supportsOptions(question.type)
-                        ? false
-                        : action.field === "allowOther"
-                          ? action.value
-                          : question.allowOther,
-                  otherOptionLabel:
-                    action.field === "allowOther" && action.value && !question.otherOptionLabel
-                      ? "Other"
-                      : question.otherOptionLabel,
-                  otherOptionNavigation:
-                    (action.field === "allowOther" && !action.value) ||
-                    (action.field === "showAsDropdown" && action.value)
-                      ? createNavigationRule()
-                      : question.otherOptionNavigation,
-                }
-              : question,
-          ),
+          questions: block.questions.map((question) => {
+            if (question.id !== action.questionId) {
+              return question;
+            }
+
+            if (action.field === "allowOther") {
+              return {
+                ...question,
+                allowOther: supportsOptions(question.type) ? action.value : false,
+                otherOptionLabelKey:
+                  action.value && !question.otherOptionLabelKey
+                    ? createTranslationKey()
+                    : action.value
+                      ? question.otherOptionLabelKey
+                      : null,
+                otherOptionNavigation: action.value ? question.otherOptionNavigation : createNavigationRule(),
+              };
+            }
+
+            if (action.field === "showAsDropdown") {
+              return {
+                ...question,
+                showAsDropdown: question.type === "single_choice" ? action.value : false,
+                allowOther: action.value ? false : question.allowOther,
+                otherOptionLabelKey: action.value ? null : question.otherOptionLabelKey,
+                otherOptionNavigation: action.value ? createNavigationRule() : question.otherOptionNavigation,
+              };
+            }
+
+            if (action.field === "routeByAnswer") {
+              return {
+                ...question,
+                routeByAnswer: question.type === "single_choice" ? action.value : false,
+              };
+            }
+
+            if (action.field === "multilineText") {
+              return {
+                ...question,
+                multilineText: question.type === "text" ? action.value : false,
+              };
+            }
+
+            if (action.field === "required") {
+              return {
+                ...question,
+                required: question.type === "title_description" ? false : action.value,
+              };
+            }
+
+            return question;
+          }),
         })),
       );
+
+      const targetQuestion = nextState.blocks
+        .flatMap((block) => block.questions)
+        .find((question) => question.id === action.questionId);
+
+      if (!targetQuestion?.otherOptionLabelKey) {
+        return nextState;
+      }
+
+      return {
+        ...nextState,
+        translations: {
+          ...nextState.translations,
+          ...createTranslationEntries([targetQuestion.otherOptionLabelKey]),
+        },
+      };
+    }
 
     case "delete_question":
       return normalizeForm(
@@ -211,21 +341,45 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
 
     case "duplicate_question":
-      return normalizeForm(
-        updateBlocks(state, action.blockId, (block) => {
-          const index = block.questions.findIndex((question) => question.id === action.questionId);
-          if (index === -1) {
-            return block;
-          }
+      return (() => {
+        const block = state.blocks.find((entry) => entry.id === action.blockId);
+        if (!block) {
+          return state;
+        }
 
-          const nextQuestions = [...block.questions];
-          nextQuestions.splice(index + 1, 0, cloneQuestion(block.questions[index]));
-          return {
-            ...block,
-            questions: nextQuestions,
-          };
-        }),
-      );
+        const index = block.questions.findIndex((question) => question.id === action.questionId);
+        if (index === -1) {
+          return state;
+        }
+
+        const duplicated = duplicateQuestion(block.questions[index], state.translations);
+
+        return normalizeForm(
+          updateBlocks(
+            {
+              ...state,
+              translations: {
+                ...state.translations,
+                ...duplicated.translations,
+              },
+            },
+            action.blockId,
+            (currentBlock) => {
+              if (currentBlock.id !== action.blockId) {
+                return currentBlock;
+              }
+
+              const nextQuestions = [...currentBlock.questions];
+              nextQuestions.splice(index + 1, 0, duplicated.question);
+
+              return {
+                ...currentBlock,
+                questions: nextQuestions,
+              };
+            },
+          ),
+        );
+      })();
 
     case "toggle_question":
       return normalizeForm(
@@ -258,42 +412,33 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         })),
       );
 
-    case "add_option":
-      return normalizeForm(
-        updateBlocks(state, action.blockId, (block) => ({
-          ...block,
-          questions: block.questions.map((question) =>
-            question.id === action.questionId
-              ? {
-                  ...question,
-                  options: [...question.options, createOption()],
-                }
-              : question,
-          ),
-        })),
-      );
+    case "add_option": {
+      const option = createOption();
 
-    case "update_option":
       return normalizeForm(
-        updateBlocks(state, action.blockId, (block) => ({
-          ...block,
-          questions: block.questions.map((question) =>
-            question.id === action.questionId
-              ? {
-                  ...question,
-                  options: question.options.map((option) =>
-                    option.id === action.optionId
-                      ? {
-                          ...option,
-                          label: action.value,
-                        }
-                      : option,
-                  ),
-                }
-              : question,
-          ),
-        })),
+        updateBlocks(
+          {
+            ...state,
+            translations: {
+              ...state.translations,
+              ...createTranslationEntries([option.labelKey]),
+            },
+          },
+          action.blockId,
+          (block) => ({
+            ...block,
+            questions: block.questions.map((question) =>
+              question.id === action.questionId
+                ? {
+                    ...question,
+                    options: [...question.options, option],
+                  }
+                : question,
+            ),
+          }),
+        ),
       );
+    }
 
     case "delete_option":
       return normalizeForm(
@@ -370,6 +515,4 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
   }
 };
 
-export const getInitialFormState = () => normalizeForm(createForm());
-
-export const createNextNavigation = () => createNavigationRule("next");
+export const getInitialFormState = () => createForm();

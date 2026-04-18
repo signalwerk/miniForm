@@ -1,10 +1,23 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { QUESTION_TYPE_OPTIONS, supportsOptionNavigation, supportsOptions } from "../lib/form-model";
+import {
+  QUESTION_TYPE_OPTIONS,
+  getTranslationValue,
+  supportsOptionNavigation,
+  supportsOptions,
+} from "../lib/form-model";
 import type { DropIndicatorPosition } from "../lib/dnd";
-import type { FormQuestion, NavigationRule, QuestionType } from "../lib/types";
+import type {
+  FormLanguage,
+  FormQuestion,
+  FormTranslations,
+  NavigationRule,
+  QuestionType,
+  TranslationKey,
+} from "../lib/types";
 import { DragHandle } from "./DragHandle";
 import { OptionList } from "./OptionList";
+import { TranslationInput } from "./TranslationInput";
 
 interface BlockTarget {
   id: string;
@@ -17,9 +30,10 @@ interface QuestionCardProps {
   index: number;
   blockTargets: BlockTarget[];
   dropIndicator: DropIndicatorPosition;
-  onTitleChange: (value: string) => void;
-  onDescriptionChange: (value: string) => void;
-  onOtherOptionLabelChange: (value: string) => void;
+  languages: FormLanguage[];
+  defaultLanguage: string;
+  translations: FormTranslations;
+  onUpdateTranslation: (translationKey: TranslationKey, languageId: string, value: string) => void;
   onTypeChange: (value: QuestionType) => void;
   onToggle: (
     field: "required" | "multilineText" | "showAsDropdown" | "allowOther" | "routeByAnswer",
@@ -29,7 +43,6 @@ interface QuestionCardProps {
   onDelete: () => void;
   onCollapse: () => void;
   onAddOption: () => void;
-  onUpdateOption: (optionId: string, value: string) => void;
   onDeleteOption: (optionId: string) => void;
   onMoveOption: (fromIndex: number, toIndex: number) => void;
   onSetOptionRule: (optionId: string, rule: NavigationRule) => void;
@@ -42,16 +55,16 @@ export function QuestionCard({
   index,
   blockTargets,
   dropIndicator,
-  onTitleChange,
-  onDescriptionChange,
-  onOtherOptionLabelChange,
+  languages,
+  defaultLanguage,
+  translations,
+  onUpdateTranslation,
   onTypeChange,
   onToggle,
   onDuplicate,
   onDelete,
   onCollapse,
   onAddOption,
-  onUpdateOption,
   onDeleteOption,
   onMoveOption,
   onSetOptionRule,
@@ -73,6 +86,7 @@ export function QuestionCard({
   const canRouteByAnswer = supportsOptionNavigation(question.type);
   const isTextQuestion = question.type === "text";
   const isSingleChoice = question.type === "single_choice";
+  const questionTitle = getTranslationValue(translations, question.titleKey, defaultLanguage);
 
   return (
     <article
@@ -99,7 +113,7 @@ export function QuestionCard({
           />
           <div>
             <p className="eyebrow">Question {index + 1}</p>
-            <h3>{question.title || (isInformational ? "Untitled title" : "Untitled question")}</h3>
+            <h3>{questionTitle || (isInformational ? "Untitled title" : "Untitled question")}</h3>
           </div>
         </div>
 
@@ -135,41 +149,43 @@ export function QuestionCard({
 
       {!question.isCollapsed ? (
         <div className="question-card__body">
-          <div>
-            <label htmlFor={`question-title-${question.id}`}>{isInformational ? "Title" : "Prompt"}</label>
-            <input
-              id={`question-title-${question.id}`}
-              type="text"
-              value={question.title}
-              placeholder={isInformational ? "Add a title" : "Ask your question"}
-              onChange={(event) => onTitleChange(event.target.value)}
-            />
-          </div>
+          <TranslationInput
+            id={`question-title-${question.id}`}
+            label={isInformational ? "Title" : "Prompt"}
+            translationKey={question.titleKey}
+            translations={translations}
+            languages={languages}
+            defaultLanguage={defaultLanguage}
+            placeholder={isInformational ? "Add a title" : "Ask your question"}
+            onChange={onUpdateTranslation}
+          />
 
-          <div>
-            <label htmlFor={`question-description-${question.id}`}>
-              {isInformational ? "Description" : "Help text"}
-            </label>
-            <textarea
-              id={`question-description-${question.id}`}
-              value={question.description}
-              placeholder={
-                isInformational
-                  ? "Add explanatory text inside this block"
-                  : "Optional description for the respondent"
-              }
-              rows={isInformational ? 4 : 3}
-              onChange={(event) => onDescriptionChange(event.target.value)}
-            />
-          </div>
+          <TranslationInput
+            id={`question-description-${question.id}`}
+            label={isInformational ? "Description" : "Help text"}
+            translationKey={question.descriptionKey}
+            translations={translations}
+            languages={languages}
+            defaultLanguage={defaultLanguage}
+            placeholder={
+              isInformational
+                ? "Add explanatory text inside this block"
+                : "Optional description for the respondent"
+            }
+            multiline
+            rows={isInformational ? 4 : 3}
+            onChange={onUpdateTranslation}
+          />
 
           {supportsOptions(question.type) ? (
             <OptionList
               question={question}
               blockTargets={blockTargets}
+              languages={languages}
+              defaultLanguage={defaultLanguage}
+              translations={translations}
               onAddOption={onAddOption}
-              onUpdateOption={onUpdateOption}
-              onUpdateOtherOptionLabel={onOtherOptionLabelChange}
+              onUpdateTranslation={onUpdateTranslation}
               onToggleOther={(value) => onToggle("allowOther", value)}
               onDeleteOption={onDeleteOption}
               onMoveOption={onMoveOption}

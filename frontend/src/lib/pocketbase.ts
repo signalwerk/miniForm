@@ -1,4 +1,5 @@
 import PocketBase, { type RecordModel } from "pocketbase";
+import { isSupportedFormDefinition } from "./form-model";
 import type { FormDefinition, FormSummary } from "./types";
 
 const resolvePocketBaseUrl = () => {
@@ -89,6 +90,11 @@ export const listForms = async (): Promise<FormSummary[]> => {
 
 export const getForm = async (recordId: string): Promise<FormDefinition> => {
   const record = await pb.collection(COLLECTION_NAME).getOne<FormRecord>(recordId);
+
+  if (!isSupportedFormDefinition(record.data)) {
+    throw new Error("This form uses an older data shape and is no longer supported by the editor.");
+  }
+
   return record.data;
 };
 

@@ -5,28 +5,42 @@ export type QuestionType =
   | "multiple_choice";
 
 export type NavigationMode = "next" | "block" | "submit";
+export type TranslationKey = string;
+export type LanguageId = string;
 
 export interface NavigationRule {
   mode: NavigationMode;
   targetBlockId: string | null;
 }
 
+export interface FormLanguage {
+  id: LanguageId;
+  label: string;
+}
+
+export interface FormI18nSettings {
+  languages: FormLanguage[];
+  defaultLanguage: LanguageId;
+}
+
+export type FormTranslations = Record<TranslationKey, Record<LanguageId, string>>;
+
 export interface FormOption {
   id: string;
-  label: string;
+  labelKey: TranslationKey;
   navigation: NavigationRule;
 }
 
 export interface FormQuestion {
   id: string;
   type: QuestionType;
-  title: string;
-  description: string;
+  titleKey: TranslationKey;
+  descriptionKey: TranslationKey;
   required: boolean;
   multilineText: boolean;
   showAsDropdown: boolean;
   allowOther: boolean;
-  otherOptionLabel: string;
+  otherOptionLabelKey: TranslationKey | null;
   otherOptionNavigation: NavigationRule;
   routeByAnswer: boolean;
   options: FormOption[];
@@ -45,6 +59,8 @@ export interface FormBlock {
 export interface FormDefinition {
   title: string;
   description: string;
+  i18n: FormI18nSettings;
+  translations: FormTranslations;
   blocks: FormBlock[];
 }
 

@@ -490,13 +490,6 @@ ul {
   border-radius: 999px;
 }
 
-.option-list__main input {
-  border-width: 0 0 1px;
-  border-radius: 0;
-  background: transparent;
-  padding: 0.6rem 0.4rem;
-}
-
 .option-list__route {
   width: min(16rem, 100%);
 }
@@ -513,6 +506,103 @@ ul {
 .flow-rule {
   display: grid;
   gap: var(--space-xs);
+}
+
+.translation-input {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.translation-input__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: var(--space-xs);
+  align-items: center;
+}
+
+.translation-input__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-sm);
+  align-items: start;
+}
+
+.translation-input__field-wrap {
+  min-width: 0;
+}
+
+.translation-input__controls {
+  display: grid;
+  gap: var(--space-xs);
+  align-content: start;
+}
+
+.translation-input__language {
+  width: 10rem;
+  padding: 0.45rem 0.65rem;
+}
+
+.translation-input__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: var(--color-danger);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.translation-input--missing .translation-input__field {
+  border-color: var(--color-danger);
+  background: rgba(157, 29, 23, 0.05);
+}
+
+.translation-input--option {
+  gap: var(--space-2xs);
+}
+
+.translation-input--option .translation-input__field {
+  border-width: 0 0 1px;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.6rem 0.4rem;
+}
+
+.translation-input--option.translation-input--missing .translation-input__field {
+  background: rgba(157, 29, 23, 0.03);
+}
+
+.language-settings {
+  display: grid;
+  gap: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid rgba(17, 17, 17, 0.12);
+}
+
+.language-settings__list {
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.language-settings__row {
+  display: grid;
+  grid-template-columns: minmax(0, 12rem) minmax(0, 1fr) auto auto;
+  gap: var(--space-sm);
+  align-items: end;
+}
+
+.language-settings__field,
+.language-settings__default {
+  display: grid;
+  gap: var(--space-xs);
+}
+
+.option-list__missing-note {
+  padding-left: 2rem;
 }
 
 .form-list {
@@ -630,5 +720,18 @@ ul {
   .card-title,
   .option-list__row {
     flex-direction: column;
+  }
+
+  .language-settings__row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .translation-input__body {
+    grid-template-columns: 1fr;
+  }
+
+  .translation-input__language {
+    width: 100%;
   }
 }
