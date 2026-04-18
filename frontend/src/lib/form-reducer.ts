@@ -9,10 +9,13 @@ import {
   createTranslationKey,
   duplicateBlock,
   duplicateQuestion,
+  isChoiceQuestion,
+  isSingleChoiceQuestion,
+  isTextQuestion,
+  isTitleDescriptionQuestion,
   moveItem,
   normalizeForm,
   normalizeQuestionType,
-  supportsOptions,
 } from "./form-model";
 import type {
   FormBlock,
@@ -179,7 +182,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       const nextBlocks = state.blocks.filter((block) => block.id !== action.blockId);
       return normalizeForm({
         ...state,
-        blocks: nextBlocks.length > 0 ? nextBlocks : [createBlock()],
+        blocks: nextBlocks,
       });
     }
 
@@ -220,9 +223,10 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     case "add_question": {
       const question = createQuestion(action.questionType);
       const questionTranslationEntries = createTranslationEntries([
-        question.titleKey,
-        question.descriptionKey,
-        ...question.options.map((option) => option.labelKey),
+        question.title,
+        ...(isTitleDescriptionQuestion(question) ? [question.description] : []),
+        ...(isTextQuestion(question) ? [question.placeholder] : []),
+        ...(isChoiceQuestion(question) ? question.options.map((option) => option.label) : []),
       ]);
 
       return normalizeForm(
@@ -244,8 +248,8 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
     }
 
-    case "set_question_type":
-      return normalizeForm(
+    case "set_question_type": {
+      const nextState = normalizeForm(
         updateBlocks(state, action.blockId, (block) => ({
           ...block,
           questions: block.questions.map((question) =>
@@ -255,6 +259,31 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
           ),
         })),
       );
+
+      const targetQuestion = nextState.blocks
+        .flatMap((block) => block.questions)
+        .find((question) => question.id === action.questionId);
+
+      if (!targetQuestion) {
+        return nextState;
+      }
+
+      return {
+        ...nextState,
+        translations: {
+          ...nextState.translations,
+          ...createTranslationEntries([
+            targetQuestion.title,
+            ...(isTitleDescriptionQuestion(targetQuestion) ? [targetQuestion.description] : []),
+            ...(isTextQuestion(targetQuestion) ? [targetQuestion.placeholder] : []),
+            ...(isChoiceQuestion(targetQuestion) ? targetQuestion.options.map((option) => option.label) : []),
+            ...(isChoiceQuestion(targetQuestion) && targetQuestion.otherOptionLabel
+              ? [targetQuestion.otherOptionLabel]
+              : []),
+          ]),
+        },
+      };
+    }
 
     case "set_question_toggle": {
       const nextState = normalizeForm(
@@ -266,47 +295,80 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
             }
 
             if (action.field === "allowOther") {
-              return {
-                ...question,
-                allowOther: supportsOptions(question.type) ? action.value : false,
-                otherOptionLabelKey:
-                  action.value && !question.otherOptionLabelKey
-                    ? createTranslationKey()
-                    : action.value
-                      ? question.otherOptionLabelKey
-                      : null,
-                otherOptionNavigation: action.value ? question.otherOptionNavigation : createNavigationRule(),
-              };
+              if (!isChoiceQuestion(question)) {
+                return question;
+              }
+
+              return isSingleChoiceQuestion(question)
+                ? {
+                    ...question,
+                    allowOther: action.value,
+                    otherOptionLabel:
+                      action.value && !question.otherOptionLabel
+                        ? createTranslationKey()
+                        : action.value
+                          ? question.otherOptionLabel
+                          : null,
+                    otherOptionNavigation: action.value
+                      ? question.otherOptionNavigation
+                      : createNavigationRule(),
+                  }
+                : {
+                    ...question,
+                    allowOther: action.value,
+                    otherOptionLabel:
+                      action.value && !question.otherOptionLabel
+                        ? createTranslationKey()
+                        : action.value
+                          ? question.otherOptionLabel
+                          : null,
+                  };
             }
 
             if (action.field === "showAsDropdown") {
+              if (!isSingleChoiceQuestion(question)) {
+                return question;
+              }
+
               return {
                 ...question,
-                showAsDropdown: question.type === "single_choice" ? action.value : false,
+                showAsDropdown: action.value,
                 allowOther: action.value ? false : question.allowOther,
-                otherOptionLabelKey: action.value ? null : question.otherOptionLabelKey,
+                otherOptionLabel: action.value ? null : question.otherOptionLabel,
                 otherOptionNavigation: action.value ? createNavigationRule() : question.otherOptionNavigation,
               };
             }
 
             if (action.field === "routeByAnswer") {
+              if (!isSingleChoiceQuestion(question)) {
+                return question;
+              }
+
               return {
                 ...question,
-                routeByAnswer: question.type === "single_choice" ? action.value : false,
+                routeByAnswer: action.value,
               };
             }
 
             if (action.field === "multilineText") {
+              if (!isTextQuestion(question)) {
+                return question;
+              }
+
               return {
                 ...question,
-                multilineText: question.type === "text" ? action.value : false,
+                multilineText: action.value,
               };
             }
 
             if (action.field === "required") {
+              if (isTitleDescriptionQuestion(question)) {
+                return question;
+              }
+
               return {
                 ...question,
-                required: question.type === "title_description" ? false : action.value,
+                required: action.value,
               };
             }
 
@@ -319,7 +381,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         .flatMap((block) => block.questions)
         .find((question) => question.id === action.questionId);
 
-      if (!targetQuestion?.otherOptionLabelKey) {
+      if (!targetQuestion || !isChoiceQuestion(targetQuestion) || !targetQuestion.otherOptionLabel) {
         return nextState;
       }
 
@@ -327,7 +389,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         ...nextState,
         translations: {
           ...nextState.translations,
-          ...createTranslationEntries([targetQuestion.otherOptionLabelKey]),
+          ...createTranslationEntries([targetQuestion.otherOptionLabel]),
         },
       };
     }
@@ -421,14 +483,14 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
             ...state,
             translations: {
               ...state.translations,
-              ...createTranslationEntries([option.labelKey]),
+              ...createTranslationEntries([option.label]),
             },
           },
           action.blockId,
           (block) => ({
             ...block,
             questions: block.questions.map((question) =>
-              question.id === action.questionId
+              question.id === action.questionId && isChoiceQuestion(question)
                 ? {
                     ...question,
                     options: [...question.options, option],
@@ -445,7 +507,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         updateBlocks(state, action.blockId, (block) => ({
           ...block,
           questions: block.questions.map((question) =>
-            question.id === action.questionId
+            question.id === action.questionId && isChoiceQuestion(question)
               ? {
                   ...question,
                   options: question.options.filter((option) => option.id !== action.optionId),
@@ -460,7 +522,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         updateBlocks(state, action.blockId, (block) => ({
           ...block,
           questions: block.questions.map((question) =>
-            question.id === action.questionId
+            question.id === action.questionId && isChoiceQuestion(question)
               ? {
                   ...question,
                   options: moveItem(question.options, action.fromIndex, action.toIndex),
@@ -475,7 +537,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         updateBlocks(state, action.blockId, (block) => ({
           ...block,
           questions: block.questions.map((question) =>
-            question.id === action.questionId
+            question.id === action.questionId && isChoiceQuestion(question)
               ? {
                   ...question,
                   options: question.options.map((option) =>
@@ -497,7 +559,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         updateBlocks(state, action.blockId, (block) => ({
           ...block,
           questions: block.questions.map((question) =>
-            question.id === action.questionId
+            question.id === action.questionId && isSingleChoiceQuestion(question)
               ? {
                   ...question,
                   otherOptionNavigation: action.rule,

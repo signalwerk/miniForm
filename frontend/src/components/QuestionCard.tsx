@@ -3,8 +3,10 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   QUESTION_TYPE_OPTIONS,
   getTranslationValue,
-  supportsOptionNavigation,
-  supportsOptions,
+  isChoiceQuestion,
+  isSingleChoiceQuestion,
+  isTextQuestion,
+  isTitleDescriptionQuestion,
 } from "../lib/form-model";
 import type { DropIndicatorPosition } from "../lib/dnd";
 import type {
@@ -82,11 +84,11 @@ export function QuestionCard({
     id: question.id,
   });
 
-  const isInformational = question.type === "title_description";
-  const canRouteByAnswer = supportsOptionNavigation(question.type);
-  const isTextQuestion = question.type === "text";
-  const isSingleChoice = question.type === "single_choice";
-  const questionTitle = getTranslationValue(translations, question.titleKey, defaultLanguage);
+  const isInformational = isTitleDescriptionQuestion(question);
+  const canRouteByAnswer = isSingleChoiceQuestion(question);
+  const isText = isTextQuestion(question);
+  const isSingleChoice = isSingleChoiceQuestion(question);
+  const questionTitle = getTranslationValue(translations, question.title, defaultLanguage);
 
   return (
     <article
@@ -152,7 +154,7 @@ export function QuestionCard({
           <TranslationInput
             id={`question-title-${question.id}`}
             label={isInformational ? "Title" : "Prompt"}
-            translationKey={question.titleKey}
+            translationKey={question.title}
             translations={translations}
             languages={languages}
             defaultLanguage={defaultLanguage}
@@ -160,24 +162,35 @@ export function QuestionCard({
             onChange={onUpdateTranslation}
           />
 
-          <TranslationInput
-            id={`question-description-${question.id}`}
-            label={isInformational ? "Description" : "Help text"}
-            translationKey={question.descriptionKey}
-            translations={translations}
-            languages={languages}
-            defaultLanguage={defaultLanguage}
-            placeholder={
-              isInformational
-                ? "Add explanatory text inside this block"
-                : "Optional description for the respondent"
-            }
-            multiline
-            rows={isInformational ? 4 : 3}
-            onChange={onUpdateTranslation}
-          />
+          {isInformational ? (
+            <TranslationInput
+              id={`question-description-${question.id}`}
+              label="Description"
+              translationKey={question.description}
+              translations={translations}
+              languages={languages}
+              defaultLanguage={defaultLanguage}
+              placeholder="Add explanatory text inside this block"
+              multiline
+              rows={4}
+              onChange={onUpdateTranslation}
+            />
+          ) : null}
 
-          {supportsOptions(question.type) ? (
+          {isText ? (
+            <TranslationInput
+              id={`question-placeholder-${question.id}`}
+              label="Placeholder"
+              translationKey={question.placeholder}
+              translations={translations}
+              languages={languages}
+              defaultLanguage={defaultLanguage}
+              placeholder={question.multilineText ? "Placeholder text for the textarea" : "Placeholder text for the input"}
+              onChange={onUpdateTranslation}
+            />
+          ) : null}
+
+          {isChoiceQuestion(question) ? (
             <OptionList
               question={question}
               blockTargets={blockTargets}
@@ -207,7 +220,7 @@ export function QuestionCard({
                 </label>
               ) : null}
 
-              {isTextQuestion ? (
+              {isText ? (
                 <label className="checkbox">
                   <input
                     type="checkbox"

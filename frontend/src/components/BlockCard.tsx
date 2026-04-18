@@ -37,7 +37,6 @@ interface BlockCardProps {
   languages: FormLanguage[];
   defaultLanguage: string;
   translations: FormTranslations;
-  onUpdateBlock: (patch: Partial<FormBlock>) => void;
   onDeleteBlock: () => void;
   onDuplicateBlock: () => void;
   onToggleBlock: () => void;
@@ -69,7 +68,6 @@ export function BlockCard({
   languages,
   defaultLanguage,
   translations,
-  onUpdateBlock,
   onDeleteBlock,
   onDuplicateBlock,
   onToggleBlock,
@@ -149,7 +147,7 @@ export function BlockCard({
           />
           <div>
             <p className="eyebrow">Block {index + 1}</p>
-            <h2>{block.title || "Untitled block"}</h2>
+            <h2>Block {index + 1}</h2>
           </div>
         </div>
 
@@ -168,30 +166,6 @@ export function BlockCard({
 
       {!block.isCollapsed ? (
         <div className="block-card__body">
-          <div className="field-grid">
-            <div>
-              <label htmlFor={`block-title-${block.id}`}>Block title</label>
-              <input
-                id={`block-title-${block.id}`}
-                type="text"
-                value={block.title}
-                placeholder="Block title"
-                onChange={(event) => onUpdateBlock({ title: event.target.value })}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label htmlFor={`block-description-${block.id}`}>Description</label>
-            <textarea
-              id={`block-description-${block.id}`}
-              rows={3}
-              value={block.description}
-              placeholder="Optional instructions for this block"
-              onChange={(event) => onUpdateBlock({ description: event.target.value })}
-            />
-          </div>
-
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}

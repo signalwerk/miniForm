@@ -60,7 +60,7 @@ export function EditorPage() {
     () =>
       form.blocks.map((block, index) => ({
         id: block.id,
-        label: `${index + 1}. ${block.title || "Untitled block"}`,
+        label: `Block ${index + 1}`,
       })),
     [form.blocks],
   );
@@ -524,152 +524,152 @@ export function EditorPage() {
         >
           <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
             <div className="block-list">
-              {form.blocks.map((block, blockIndex) => (
-                <BlockCard
-                  key={block.id}
-                  block={block}
-                  index={blockIndex}
-                  blockTargets={blockTargets}
-                  dropIndicator={getDropIndicator(blockIds, block.id, activeBlockId, overBlockId)}
-                  languages={form.i18n.languages}
-                  defaultLanguage={form.i18n.defaultLanguage}
-                  translations={form.translations}
-                  onUpdateBlock={(patch) =>
-                    dispatch({
-                      type: "update_block",
-                      blockId: block.id,
-                      patch,
-                    })
-                  }
-                  onDeleteBlock={() =>
-                    dispatch({
-                      type: "delete_block",
-                      blockId: block.id,
-                    })
-                  }
-                  onDuplicateBlock={() =>
-                    dispatch({
-                      type: "duplicate_block",
-                      blockId: block.id,
-                    })
-                  }
-                  onToggleBlock={() =>
-                    dispatch({
-                      type: "toggle_block",
-                      blockId: block.id,
-                    })
-                  }
-                  onQuestionMove={(fromIndex, toIndex) =>
-                    dispatch({
-                      type: "move_question",
-                      blockId: block.id,
-                      fromIndex,
-                      toIndex,
-                    })
-                  }
-                  onAddQuestion={(questionType?: QuestionType) =>
-                    dispatch({
-                      type: "add_question",
-                      blockId: block.id,
-                      questionType,
-                    })
-                  }
-                  onUpdateTranslation={(translationKey: TranslationKey, languageId: string, value: string) =>
-                    dispatch({
-                      type: "update_translation",
-                      translationKey,
-                      languageId,
-                      value,
-                    })
-                  }
-                  onQuestionTypeChange={(questionId, questionType) =>
-                    dispatch({
-                      type: "set_question_type",
-                      blockId: block.id,
-                      questionId,
-                      questionType,
-                    })
-                  }
-                  onQuestionToggle={(questionId, field, value) =>
-                    dispatch({
-                      type: "set_question_toggle",
-                      blockId: block.id,
-                      questionId,
-                      field,
-                      value,
-                    })
-                  }
-                  onDeleteQuestion={(questionId) =>
-                    dispatch({
-                      type: "delete_question",
-                      blockId: block.id,
-                      questionId,
-                    })
-                  }
-                  onDuplicateQuestion={(questionId) =>
-                    dispatch({
-                      type: "duplicate_question",
-                      blockId: block.id,
-                      questionId,
-                    })
-                  }
-                  onToggleQuestion={(questionId) =>
-                    dispatch({
-                      type: "toggle_question",
-                      blockId: block.id,
-                      questionId,
-                    })
-                  }
-                  onSetBlockRule={(rule: NavigationRule) =>
-                    dispatch({
-                      type: "set_block_rule",
-                      blockId: block.id,
-                      rule,
-                    })
-                  }
-                  onAddOption={(questionId) =>
-                    dispatch({
-                      type: "add_option",
-                      blockId: block.id,
-                      questionId,
-                    })
-                  }
-                  onDeleteOption={(questionId, optionId) =>
-                    dispatch({
-                      type: "delete_option",
-                      blockId: block.id,
-                      questionId,
-                      optionId,
-                    })
-                  }
-                  onMoveOption={(questionId, fromIndex, toIndex) =>
-                    dispatch({
-                      type: "move_option",
-                      blockId: block.id,
-                      questionId,
-                      fromIndex,
-                      toIndex,
-                    })
-                  }
-                  onSetOptionRule={(questionId, optionId, rule) =>
-                    dispatch({
-                      type: "set_option_rule",
-                      blockId: block.id,
-                      questionId,
-                      optionId,
-                      rule,
-                    })
-                  }
-                  onSetOtherOptionRule={(questionId, rule) =>
-                    dispatch({
-                      type: "set_other_option_rule",
-                      blockId: block.id,
-                      questionId,
-                      rule,
-                    })
-                  }
-                />
-              ))}
+              {form.blocks.length === 0 ? (
+                <div className="empty-state">
+                  <p className="eyebrow">No blocks yet</p>
+                  <p>Add a block when you want to start structuring the form flow.</p>
+                </div>
+              ) : (
+                form.blocks.map((block, blockIndex) => (
+                  <BlockCard
+                    key={block.id}
+                    block={block}
+                    index={blockIndex}
+                    blockTargets={blockTargets}
+                    dropIndicator={getDropIndicator(blockIds, block.id, activeBlockId, overBlockId)}
+                    languages={form.i18n.languages}
+                    defaultLanguage={form.i18n.defaultLanguage}
+                    translations={form.translations}
+                    onDeleteBlock={() =>
+                      dispatch({
+                        type: "delete_block",
+                        blockId: block.id,
+                      })
+                    }
+                    onDuplicateBlock={() =>
+                      dispatch({
+                        type: "duplicate_block",
+                        blockId: block.id,
+                      })
+                    }
+                    onToggleBlock={() =>
+                      dispatch({
+                        type: "toggle_block",
+                        blockId: block.id,
+                      })
+                    }
+                    onQuestionMove={(fromIndex, toIndex) =>
+                      dispatch({
+                        type: "move_question",
+                        blockId: block.id,
+                        fromIndex,
+                        toIndex,
+                      })
+                    }
+                    onAddQuestion={(questionType?: QuestionType) =>
+                      dispatch({
+                        type: "add_question",
+                        blockId: block.id,
+                        questionType,
+                      })
+                    }
+                    onUpdateTranslation={(translationKey: TranslationKey, languageId: string, value: string) =>
+                      dispatch({
+                        type: "update_translation",
+                        translationKey,
+                        languageId,
+                        value,
+                      })
+                    }
+                    onQuestionTypeChange={(questionId, questionType) =>
+                      dispatch({
+                        type: "set_question_type",
+                        blockId: block.id,
+                        questionId,
+                        questionType,
+                      })
+                    }
+                    onQuestionToggle={(questionId, field, value) =>
+                      dispatch({
+                        type: "set_question_toggle",
+                        blockId: block.id,
+                        questionId,
+                        field,
+                        value,
+                      })
+                    }
+                    onDeleteQuestion={(questionId) =>
+                      dispatch({
+                        type: "delete_question",
+                        blockId: block.id,
+                        questionId,
+                      })
+                    }
+                    onDuplicateQuestion={(questionId) =>
+                      dispatch({
+                        type: "duplicate_question",
+                        blockId: block.id,
+                        questionId,
+                      })
+                    }
+                    onToggleQuestion={(questionId) =>
+                      dispatch({
+                        type: "toggle_question",
+                        blockId: block.id,
+                        questionId,
+                      })
+                    }
+                    onSetBlockRule={(rule: NavigationRule) =>
+                      dispatch({
+                        type: "set_block_rule",
+                        blockId: block.id,
+                        rule,
+                      })
+                    }
+                    onAddOption={(questionId) =>
+                      dispatch({
+                        type: "add_option",
+                        blockId: block.id,
+                        questionId,
+                      })
+                    }
+                    onDeleteOption={(questionId, optionId) =>
+                      dispatch({
+                        type: "delete_option",
+                        blockId: block.id,
+                        questionId,
+                        optionId,
+                      })
+                    }
+                    onMoveOption={(questionId, fromIndex, toIndex) =>
+                      dispatch({
+                        type: "move_option",
+                        blockId: block.id,
+                        questionId,
+                        fromIndex,
+                        toIndex,
+                      })
+                    }
+                    onSetOptionRule={(questionId, optionId, rule) =>
+                      dispatch({
+                        type: "set_option_rule",
+                        blockId: block.id,
+                        questionId,
+                        optionId,
+                        rule,
+                      })
+                    }
+                    onSetOtherOptionRule={(questionId, rule) =>
+                      dispatch({
+                        type: "set_other_option_rule",
+                        blockId: block.id,
+                        questionId,
+                        rule,
+                      })
+                    }
+                  />
+                ))
+              )}
             </div>
           </SortableContext>
         </DndContext>

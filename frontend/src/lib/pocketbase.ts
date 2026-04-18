@@ -1,6 +1,6 @@
 import PocketBase, { type RecordModel } from "pocketbase";
-import { isSupportedFormDefinition } from "./form-model";
-import type { FormDefinition, FormSummary } from "./types";
+import { hydrateFormDefinition, isSupportedFormDefinition, serializeFormDefinition } from "./form-model";
+import type { FormDefinition, FormSummary, PersistedFormDefinition } from "./types";
 
 const resolvePocketBaseUrl = () => {
   const fromEnv = import.meta.env.VITE_POCKETBASE_URL;
@@ -28,7 +28,7 @@ interface FormRecord extends RecordModel {
   created?: string;
   title: string;
   description: string;
-  data: FormDefinition;
+  data: PersistedFormDefinition;
   updated?: string;
 }
 
@@ -41,7 +41,7 @@ const buildFormPayload = (form: FormDefinition, ownerId: string) => ({
   owner: ownerId,
   title: getPersistedTitle(form),
   description: form.description,
-  data: form,
+  data: serializeFormDefinition(form),
 });
 
 export const getCurrentUser = () => pb.authStore.model;
@@ -95,7 +95,7 @@ export const getForm = async (recordId: string): Promise<FormDefinition> => {
     throw new Error("This form uses an older data shape and is no longer supported by the editor.");
   }
 
-  return record.data;
+  return hydrateFormDefinition(record.data);
 };
 
 export const createBlankFormRecord = async (form: FormDefinition): Promise<SaveFormResponse> => {
@@ -108,6 +108,16 @@ export const createBlankFormRecord = async (form: FormDefinition): Promise<SaveF
   const created = await pb.collection(COLLECTION_NAME).create<FormRecord>(buildFormPayload(form, user.id));
 
   return { recordId: created.id };
+};
+
+export const deleteForm = async (recordId: string) => {
+  const user = getCurrentUser();
+
+  if (!user?.id) {
+    throw new Error("You need to be logged in before deleting a form.");
+  }
+
+  await pb.collection(COLLECTION_NAME).delete(recordId);
 };
 
 export const saveForm = async (

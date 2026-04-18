@@ -613,6 +613,18 @@ ul {
   margin: 0;
 }
 
+.form-list__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-xs);
+  align-items: stretch;
+}
+
+.form-list__row--active .form-list__item {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
 .form-list__item {
   width: 100%;
   display: grid;
@@ -622,9 +634,9 @@ ul {
   color: var(--color-text);
 }
 
-.form-list__item--active {
-  background: var(--color-accent);
-  color: var(--color-accent-contrast);
+.form-list__delete {
+  align-self: stretch;
+  white-space: nowrap;
 }
 
 .issue-list {

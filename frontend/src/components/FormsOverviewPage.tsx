@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FormsLibrary } from "./FormsLibrary";
 import { createForm } from "../lib/form-model";
-import { createBlankFormRecord, listForms } from "../lib/pocketbase";
+import { createBlankFormRecord, deleteForm, listForms } from "../lib/pocketbase";
 import type { FormSummary } from "../lib/types";
 
 export function FormsOverviewPage() {
@@ -11,6 +11,7 @@ export function FormsOverviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
 
   const refreshForms = async () => {
     setIsLoading(true);
@@ -46,6 +47,27 @@ export function FormsOverviewPage() {
     }
   };
 
+  const handleDeleteForm = async (form: FormSummary) => {
+    const shouldDelete = window.confirm(`Delete "${form.title}"? This cannot be undone.`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    setDeletingRecordId(form.recordId);
+    setLoadError("");
+
+    try {
+      await deleteForm(form.recordId);
+      setForms((currentForms) => currentForms.filter((entry) => entry.recordId !== form.recordId));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not delete the form.";
+      setLoadError(message);
+    } finally {
+      setDeletingRecordId(null);
+    }
+  };
+
   return (
     <main className="route-page route-page--forms">
       <section className="route-page__intro">
@@ -60,9 +82,11 @@ export function FormsOverviewPage() {
         forms={forms}
         activeRecordId={null}
         isLoading={isLoading}
+        deletingRecordId={deletingRecordId}
         onNewForm={() => void handleNewForm()}
         onRefresh={() => void refreshForms()}
         onLoad={(recordId) => navigate(`/forms/${recordId}`)}
+        onDelete={(form) => void handleDeleteForm(form)}
       />
     </main>
   );

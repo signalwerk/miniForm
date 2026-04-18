@@ -4,18 +4,22 @@ interface FormsLibraryProps {
   forms: FormSummary[];
   activeRecordId: string | null;
   isLoading: boolean;
+  deletingRecordId: string | null;
   onNewForm: () => void;
   onRefresh: () => void;
   onLoad: (recordId: string) => void;
+  onDelete: (form: FormSummary) => void;
 }
 
 export function FormsLibrary({
   forms,
   activeRecordId,
   isLoading,
+  deletingRecordId,
   onNewForm,
   onRefresh,
   onLoad,
+  onDelete,
 }: FormsLibraryProps) {
   const formatUpdated = (value: string) => {
     const parsed = Date.parse(value);
@@ -47,16 +51,29 @@ export function FormsLibrary({
         <ul className="form-list">
           {forms.map((form) => (
             <li key={form.recordId}>
-              <button
-                type="button"
+              <div
                 className={
-                  form.recordId === activeRecordId ? "form-list__item form-list__item--active" : "form-list__item"
+                  form.recordId === activeRecordId ? "form-list__row form-list__row--active" : "form-list__row"
                 }
-                onClick={() => onLoad(form.recordId)}
               >
-                <strong>{form.title}</strong>
-                <span>{formatUpdated(form.updated)}</span>
-              </button>
+                <button
+                  type="button"
+                  className="form-list__item"
+                  onClick={() => onLoad(form.recordId)}
+                >
+                  <strong>{form.title}</strong>
+                  <span>{formatUpdated(form.updated)}</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="button button--ghost button--danger form-list__delete"
+                  disabled={deletingRecordId === form.recordId}
+                  onClick={() => onDelete(form)}
+                >
+                  {deletingRecordId === form.recordId ? "Deleting…" : "Delete"}
+                </button>
+              </div>
             </li>
           ))}
         </ul>

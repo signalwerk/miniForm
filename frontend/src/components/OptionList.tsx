@@ -12,10 +12,10 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { getDropIndicator } from "../lib/dnd";
-import { getTranslationValue, supportsOptionNavigation } from "../lib/form-model";
+import { getTranslationValue, isSingleChoiceQuestion } from "../lib/form-model";
 import type {
+  ChoiceQuestion,
   FormLanguage,
-  FormQuestion,
   FormTranslations,
   NavigationRule,
   TranslationKey,
@@ -30,7 +30,7 @@ interface BlockTarget {
 }
 
 interface OptionListProps {
-  question: FormQuestion;
+  question: ChoiceQuestion;
   blockTargets: BlockTarget[];
   languages: FormLanguage[];
   defaultLanguage: string;
@@ -46,10 +46,10 @@ interface OptionListProps {
 
 interface OptionItemProps {
   optionId: string;
-  labelKey: TranslationKey;
+  label: TranslationKey;
   index: number;
   canDelete: boolean;
-  questionType: FormQuestion["type"];
+  questionType: ChoiceQuestion["type"];
   navigation: NavigationRule;
   blockTargets: BlockTarget[];
   languages: FormLanguage[];
@@ -63,7 +63,7 @@ interface OptionItemProps {
 
 function OptionItem({
   optionId,
-  labelKey,
+  label,
   index,
   canDelete,
   questionType,
@@ -116,7 +116,7 @@ function OptionItem({
             <TranslationInput
               id={`option-${optionId}`}
               label={`Option ${index + 1}`}
-              translationKey={labelKey}
+              translationKey={label}
               translations={translations}
               languages={languages}
               defaultLanguage={defaultLanguage}
@@ -127,7 +127,7 @@ function OptionItem({
           </div>
         </div>
 
-        {supportsOptionNavigation(questionType) ? (
+        {questionType === "single_choice" ? (
           <div className="option-list__route">
             <FlowRuleFields
               idPrefix={`option-rule-${optionId}`}
@@ -178,7 +178,7 @@ export function OptionList({
       },
     }),
   );
-  const otherLabel = getTranslationValue(translations, question.otherOptionLabelKey, defaultLanguage);
+  const otherLabel = getTranslationValue(translations, question.otherOptionLabel, defaultLanguage);
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveOptionId(null);
@@ -198,11 +198,6 @@ export function OptionList({
           <p className="eyebrow">Choices</p>
           <h4>Options</h4>
         </div>
-        <div className="button-group">
-          <button type="button" className="button button--secondary" onClick={onAddOption}>
-            Add option
-          </button>
-        </div>
       </div>
 
       <DndContext
@@ -221,10 +216,10 @@ export function OptionList({
             <OptionItem
               key={option.id}
               optionId={option.id}
-              labelKey={option.labelKey}
+              label={option.label}
               index={index}
               canDelete={question.options.length > 1}
-              questionType={question.routeByAnswer ? question.type : "multiple_choice"}
+              questionType={isSingleChoiceQuestion(question) && question.routeByAnswer ? question.type : "multiple_choice"}
               navigation={option.navigation}
               blockTargets={blockTargets}
               languages={languages}
@@ -245,7 +240,7 @@ export function OptionList({
         </div>
       ) : null}
 
-      {question.type !== "single_choice" || !question.showAsDropdown ? (
+      {!isSingleChoiceQuestion(question) || !question.showAsDropdown ? (
         <label className="checkbox option-list__other-toggle">
           <input
             type="checkbox"
@@ -256,7 +251,7 @@ export function OptionList({
         </label>
       ) : null}
 
-      {question.allowOther && question.otherOptionLabelKey ? (
+      {question.allowOther && question.otherOptionLabel ? (
         <article className="option-list__item option-list__item--other">
           <div className="option-list__row">
             <div className="card-title">
@@ -265,7 +260,7 @@ export function OptionList({
                 <TranslationInput
                   id={`other-option-${question.id}`}
                   label="Other label"
-                  translationKey={question.otherOptionLabelKey}
+                  translationKey={question.otherOptionLabel}
                   translations={translations}
                   languages={languages}
                   defaultLanguage={defaultLanguage}
@@ -276,7 +271,7 @@ export function OptionList({
               </div>
             </div>
 
-            {question.routeByAnswer && supportsOptionNavigation(question.type) ? (
+            {isSingleChoiceQuestion(question) && question.routeByAnswer ? (
               <div className="option-list__route">
                 <FlowRuleFields
                   idPrefix={`other-option-rule-${question.id}`}
@@ -295,6 +290,12 @@ export function OptionList({
           ) : null}
         </article>
       ) : null}
+
+      <div className="button-group">
+        <button type="button" className="button button--secondary" onClick={onAddOption}>
+          Add option
+        </button>
+      </div>
     </div>
   );
 }
