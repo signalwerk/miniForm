@@ -115,6 +115,7 @@ export const createTextQuestion = (): TextQuestion => ({
   id: createId(),
   type: "text",
   title: createTranslationKey(),
+  description: createTranslationKey(),
   required: false,
   multilineText: false,
   placeholder: createTranslationKey(),
@@ -125,6 +126,7 @@ export const createSingleChoiceQuestion = (): SingleChoiceQuestion => ({
   id: createId(),
   type: "single_choice",
   title: createTranslationKey(),
+  description: createTranslationKey(),
   required: false,
   showAsDropdown: false,
   allowOther: false,
@@ -139,6 +141,7 @@ export const createMultipleChoiceQuestion = (): MultipleChoiceQuestion => ({
   id: createId(),
   type: "multiple_choice",
   title: createTranslationKey(),
+  description: createTranslationKey(),
   required: false,
   allowOther: false,
   otherOptionLabel: null,
@@ -210,6 +213,7 @@ export const duplicateOption = (option: FormOption, translations: FormTranslatio
 export const duplicateQuestion = (question: FormQuestion, translations: FormTranslations) => {
   const content = isContentQuestion(question) ? createTranslationKey() : null;
   const title = !isContentQuestion(question) ? createTranslationKey() : null;
+  const description = !isContentQuestion(question) ? createTranslationKey() : null;
   const placeholder = isTextQuestion(question) ? createTranslationKey() : null;
   const contentTranslation =
     content && isContentQuestion(question)
@@ -218,6 +222,10 @@ export const duplicateQuestion = (question: FormQuestion, translations: FormTran
   const titleTranslation =
     title && !isContentQuestion(question)
       ? copyTranslationEntry(translations, question.title)
+      : null;
+  const descriptionTranslation =
+    description && !isContentQuestion(question)
+      ? copyTranslationEntry(translations, question.description)
       : null;
   const placeholderTranslation =
     placeholder && isTextQuestion(question)
@@ -242,6 +250,7 @@ export const duplicateQuestion = (question: FormQuestion, translations: FormTran
               id: createId(),
               type: "text",
               title: title!,
+              description: description!,
               required: question.required,
               multilineText: question.multilineText,
               placeholder: placeholder!,
@@ -252,6 +261,7 @@ export const duplicateQuestion = (question: FormQuestion, translations: FormTran
                 id: createId(),
                 type: "single_choice",
                 title: title!,
+                description: description!,
                 required: question.required,
                 showAsDropdown: question.showAsDropdown,
                 allowOther: question.allowOther,
@@ -265,6 +275,7 @@ export const duplicateQuestion = (question: FormQuestion, translations: FormTran
                 id: createId(),
                 type: "multiple_choice",
                 title: title!,
+                description: description!,
                 required: question.required,
                 allowOther: question.allowOther,
                 otherOptionLabel,
@@ -280,6 +291,11 @@ export const duplicateQuestion = (question: FormQuestion, translations: FormTran
       ...(title && titleTranslation
         ? {
             [title]: titleTranslation,
+          }
+        : {}),
+      ...(description && descriptionTranslation
+        ? {
+            [description]: descriptionTranslation,
           }
         : {}),
       ...(placeholder && placeholderTranslation
@@ -349,6 +365,7 @@ const collectReferencedTranslationKeys = (form: FormDefinition) => {
         keys.add(question.content);
       } else {
         keys.add(question.title);
+        keys.add(question.description);
       }
       if (isTextQuestion(question)) {
         keys.add(question.placeholder);
@@ -415,6 +432,7 @@ export const normalizeQuestionType = (
         ...base,
         type: "text",
         title: isTextQuestion(question) || isChoiceQuestion(question) ? question.title : promptKey,
+        description: isTextQuestion(question) || isChoiceQuestion(question) ? question.description : createTranslationKey(),
         required,
         multilineText: isTextQuestion(question) ? question.multilineText : false,
         placeholder: isTextQuestion(question) ? question.placeholder : createTranslationKey(),
@@ -425,6 +443,7 @@ export const normalizeQuestionType = (
         ...base,
         type: "single_choice",
         title: isTextQuestion(question) || isChoiceQuestion(question) ? question.title : promptKey,
+        description: isTextQuestion(question) || isChoiceQuestion(question) ? question.description : createTranslationKey(),
         required,
         showAsDropdown: isSingleChoiceQuestion(question) ? question.showAsDropdown : false,
         routeByAnswer: isSingleChoiceQuestion(question) ? question.routeByAnswer : false,
@@ -441,6 +460,7 @@ export const normalizeQuestionType = (
         ...base,
         type: "multiple_choice",
         title: isTextQuestion(question) || isChoiceQuestion(question) ? question.title : promptKey,
+        description: isTextQuestion(question) || isChoiceQuestion(question) ? question.description : createTranslationKey(),
         required,
         allowOther,
         otherOptionLabel,
@@ -550,6 +570,7 @@ export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefi
                 id: question.id,
                 type: "text",
                 title: question.title,
+                description: question.description,
                 required: question.required,
                 multilineText: question.multilineText,
                 placeholder: question.placeholder,
@@ -559,6 +580,7 @@ export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefi
                 id: question.id,
                 type: "single_choice",
                 title: question.title,
+                description: question.description,
                 required: question.required,
                 showAsDropdown: question.showAsDropdown,
                 routeByAnswer: question.routeByAnswer,
@@ -584,6 +606,7 @@ export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefi
                 id: question.id,
                 type: "multiple_choice",
                 title: question.title,
+                description: question.description,
                 required: question.required,
                 allowOther: question.allowOther,
                 ...(question.allowOther && question.otherOptionLabel
@@ -794,6 +817,7 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
         case "text":
           return (
             typeof candidateQuestion.title === "string" &&
+            typeof candidateQuestion.description === "string" &&
             typeof candidateQuestion.placeholder === "string" &&
             typeof candidateQuestion.required === "boolean" &&
             typeof candidateQuestion.multilineText === "boolean"
@@ -801,6 +825,7 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
         case "single_choice":
           return (
             typeof candidateQuestion.title === "string" &&
+            typeof candidateQuestion.description === "string" &&
             typeof candidateQuestion.required === "boolean" &&
             typeof candidateQuestion.showAsDropdown === "boolean" &&
             typeof candidateQuestion.routeByAnswer === "boolean" &&
@@ -815,6 +840,7 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
         case "multiple_choice":
           return (
             typeof candidateQuestion.title === "string" &&
+            typeof candidateQuestion.description === "string" &&
             typeof candidateQuestion.required === "boolean" &&
             typeof candidateQuestion.allowOther === "boolean" &&
             Array.isArray(candidateQuestion.options) &&

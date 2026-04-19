@@ -169,16 +169,32 @@ export function QuestionCard({
               onChange={onUpdateTranslation}
             />
           ) : (
-            <TranslationInput
-              id={`question-title-${question.id}`}
-              label="Prompt"
-              translationKey={question.title}
-              translations={translations}
-              languages={languages}
-              defaultLanguage={defaultLanguage}
-              placeholder="Ask your question"
-              onChange={onUpdateTranslation}
-            />
+            <>
+              <TranslationInput
+                id={`question-title-${question.id}`}
+                label="Prompt"
+                translationKey={question.title}
+                translations={translations}
+                languages={languages}
+                defaultLanguage={defaultLanguage}
+                placeholder="Ask your question"
+                onChange={onUpdateTranslation}
+              />
+
+              <TranslationInput
+                id={`question-description-${question.id}`}
+                label="Description"
+                translationKey={question.description}
+                translations={translations}
+                languages={languages}
+                defaultLanguage={defaultLanguage}
+                placeholder="Optional help text for the respondent"
+                multiline
+                rows={3}
+                showMissingBadge={false}
+                onChange={onUpdateTranslation}
+              />
+            </>
           )}
 
           {isText ? (
@@ -190,6 +206,7 @@ export function QuestionCard({
               languages={languages}
               defaultLanguage={defaultLanguage}
               placeholder={question.multilineText ? "Placeholder text for the textarea" : "Placeholder text for the input"}
+              showMissingBadge={false}
               onChange={onUpdateTranslation}
             />
           ) : null}

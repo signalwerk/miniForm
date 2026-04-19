@@ -43,6 +43,7 @@ export interface ContentQuestion extends CollapsibleQuestion {
 
 interface PromptQuestion extends CollapsibleQuestion {
   title: TranslationKey;
+  description: TranslationKey;
 }
 
 export interface TextQuestion extends PromptQuestion {
@@ -102,6 +103,7 @@ export interface PersistedContentQuestion extends PersistedQuestionBase {
 
 interface PersistedPromptQuestion extends PersistedQuestionBase {
   title: TranslationKey;
+  description: TranslationKey;
 }
 
 export interface PersistedTextQuestion extends PersistedPromptQuestion {

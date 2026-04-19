@@ -224,6 +224,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       const question = createQuestion(action.questionType);
       const questionTranslationEntries = createTranslationEntries([
         ...(isContentQuestion(question) ? [question.content] : [question.title]),
+        ...(!isContentQuestion(question) ? [question.description] : []),
         ...(isTextQuestion(question) ? [question.placeholder] : []),
         ...(isChoiceQuestion(question) ? question.options.map((option) => option.label) : []),
       ]);
@@ -273,6 +274,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
           ...nextState.translations,
           ...createTranslationEntries([
             ...(isContentQuestion(targetQuestion) ? [targetQuestion.content] : [targetQuestion.title]),
+            ...(!isContentQuestion(targetQuestion) ? [targetQuestion.description] : []),
             ...(isTextQuestion(targetQuestion) ? [targetQuestion.placeholder] : []),
             ...(isChoiceQuestion(targetQuestion) ? targetQuestion.options.map((option) => option.label) : []),
             ...(isChoiceQuestion(targetQuestion) && targetQuestion.otherOptionLabel

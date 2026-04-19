@@ -13,6 +13,7 @@ interface TranslationInputProps {
   multiline?: boolean;
   rows?: number;
   variant?: "default" | "option";
+  showMissingBadge?: boolean;
   onChange: (translationKey: TranslationKey, languageId: string, value: string) => void;
 }
 
@@ -27,6 +28,7 @@ export function TranslationInput({
   multiline = false,
   rows = 3,
   variant = "default",
+  showMissingBadge = true,
   onChange,
 }: TranslationInputProps) {
   const [activeLanguageId, setActiveLanguageId] = useState(defaultLanguage);
@@ -49,14 +51,14 @@ export function TranslationInput({
       className={[
         "translation-input",
         `translation-input--${variant}`,
-        isMissing ? "translation-input--missing" : "",
+        isMissing && showMissingBadge ? "translation-input--missing" : "",
       ]
         .filter(Boolean)
         .join(" ")}
     >
       <div className="translation-input__header">
         <label htmlFor={id}>{label}</label>
-        {isMissing ? <span className="translation-input__badge">Missing</span> : null}
+        {isMissing && showMissingBadge ? <span className="translation-input__badge">Missing</span> : null}
       </div>
 
       <div className="translation-input__body">
