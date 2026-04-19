@@ -13,83 +13,83 @@ import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { getDropIndicator, type DropIndicatorPosition } from "../lib/dnd";
 import type {
-  FormBlock,
+  BlockType,
   FormLanguage,
+  FormSection,
   FormTranslations,
   NavigationRule,
-  QuestionType,
-  TranslationKey,
+  TranslationId,
 } from "../lib/types";
 import { DragHandle } from "./DragHandle";
 import { FlowRuleFields } from "./FlowRuleFields";
-import { QuestionCard } from "./QuestionCard";
+import { BlockCard as BlockEditorCard } from "./QuestionCard";
 
-interface BlockTarget {
+interface SectionTarget {
   id: string;
   label: string;
 }
 
-interface BlockCardProps {
-  block: FormBlock;
+interface SectionCardProps {
+  section: FormSection;
   index: number;
-  blockTargets: BlockTarget[];
+  sectionTargets: SectionTarget[];
   dropIndicator: DropIndicatorPosition;
   languages: FormLanguage[];
   defaultLanguage: string;
   translations: FormTranslations;
-  onDeleteBlock: () => void;
-  onDuplicateBlock: () => void;
-  onToggleBlock: () => void;
-  onQuestionMove: (fromIndex: number, toIndex: number) => void;
-  onAddQuestion: (type?: QuestionType) => void;
-  onUpdateTranslation: (translationKey: TranslationKey, languageId: string, value: string) => void;
-  onQuestionTypeChange: (questionId: string, questionType: QuestionType) => void;
-  onQuestionToggle: (
-    questionId: string,
+  onDeleteSection: () => void;
+  onDuplicateSection: () => void;
+  onToggleSection: () => void;
+  onBlockMove: (fromIndex: number, toIndex: number) => void;
+  onAddBlock: (type?: BlockType) => void;
+  onUpdateTranslation: (translationId: TranslationId, languageId: string, value: string) => void;
+  onBlockTypeChange: (blockId: string, blockType: BlockType) => void;
+  onBlockToggle: (
+    blockId: string,
     field: "required" | "multilineText" | "showAsDropdown" | "allowOther" | "routeByAnswer",
     value: boolean,
   ) => void;
-  onDeleteQuestion: (questionId: string) => void;
-  onDuplicateQuestion: (questionId: string) => void;
-  onToggleQuestion: (questionId: string) => void;
-  onSetBlockRule: (rule: NavigationRule) => void;
-  onAddOption: (questionId: string) => void;
-  onDeleteOption: (questionId: string, optionId: string) => void;
-  onMoveOption: (questionId: string, fromIndex: number, toIndex: number) => void;
-  onSetOptionRule: (questionId: string, optionId: string, rule: NavigationRule) => void;
-  onSetOtherOptionRule: (questionId: string, rule: NavigationRule) => void;
+  onDeleteBlock: (blockId: string) => void;
+  onDuplicateBlock: (blockId: string) => void;
+  onToggleBlock: (blockId: string) => void;
+  onSetSectionRule: (rule: NavigationRule) => void;
+  onAddOption: (blockId: string) => void;
+  onDeleteOption: (blockId: string, optionId: string) => void;
+  onMoveOption: (blockId: string, fromIndex: number, toIndex: number) => void;
+  onSetOptionRule: (blockId: string, optionId: string, rule: NavigationRule) => void;
+  onSetOtherOptionRule: (blockId: string, rule: NavigationRule) => void;
 }
 
-export function BlockCard({
-  block,
+export function SectionCard({
+  section,
   index,
-  blockTargets,
+  sectionTargets,
   dropIndicator,
   languages,
   defaultLanguage,
   translations,
+  onDeleteSection,
+  onDuplicateSection,
+  onToggleSection,
+  onBlockMove,
+  onAddBlock,
+  onUpdateTranslation,
+  onBlockTypeChange,
+  onBlockToggle,
   onDeleteBlock,
   onDuplicateBlock,
   onToggleBlock,
-  onQuestionMove,
-  onAddQuestion,
-  onUpdateTranslation,
-  onQuestionTypeChange,
-  onQuestionToggle,
-  onDeleteQuestion,
-  onDuplicateQuestion,
-  onToggleQuestion,
-  onSetBlockRule,
+  onSetSectionRule,
   onAddOption,
   onDeleteOption,
   onMoveOption,
   onSetOptionRule,
   onSetOtherOptionRule,
-}: BlockCardProps) {
-  const availableTargets = blockTargets.filter((target) => target.id !== block.id);
-  const questionIds = useMemo(() => block.questions.map((question) => question.id), [block.questions]);
-  const [activeQuestionId, setActiveQuestionId] = useState<UniqueIdentifier | null>(null);
-  const [overQuestionId, setOverQuestionId] = useState<UniqueIdentifier | null>(null);
+}: SectionCardProps) {
+  const availableTargets = sectionTargets.filter((target) => target.id !== section.id);
+  const blockIds = useMemo(() => section.blocks.map((block) => block.id), [section.blocks]);
+  const [activeBlockId, setActiveBlockId] = useState<UniqueIdentifier | null>(null);
+  const [overBlockId, setOverBlockId] = useState<UniqueIdentifier | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -108,18 +108,18 @@ export function BlockCard({
     transition,
     isDragging,
   } = useSortable({
-    id: block.id,
+    id: section.id,
   });
 
-  const handleQuestionDragEnd = ({ active, over }: DragEndEvent) => {
-    setActiveQuestionId(null);
-    setOverQuestionId(null);
+  const handleBlockDragEnd = ({ active, over }: DragEndEvent) => {
+    setActiveBlockId(null);
+    setOverBlockId(null);
 
     if (!over || active.id === over.id) {
       return;
     }
 
-    onQuestionMove(questionIds.indexOf(String(active.id)), questionIds.indexOf(String(over.id)));
+    onBlockMove(blockIds.indexOf(String(active.id)), blockIds.indexOf(String(over.id)));
   };
 
   return (
@@ -143,75 +143,70 @@ export function BlockCard({
             attributes={attributes}
             listeners={listeners}
             setActivatorNodeRef={setActivatorNodeRef}
-            label={`Reorder block ${index + 1}`}
+            label={`Reorder section ${index + 1}`}
           />
           <div>
-            <p className="eyebrow">Block {index + 1}</p>
-            <h2>Block {index + 1}</h2>
+            <p className="eyebrow">Section {index + 1}</p>
+            <h2>Section {index + 1}</h2>
           </div>
         </div>
 
         <div className="card-actions">
-          <button type="button" className="button button--ghost" onClick={onDuplicateBlock}>
+          <button type="button" className="button button--ghost" onClick={onDuplicateSection}>
             Duplicate
           </button>
-          <button type="button" className="button button--ghost" onClick={onToggleBlock}>
-            {block.isCollapsed ? "Expand" : "Collapse"}
+          <button type="button" className="button button--ghost" onClick={onToggleSection}>
+            {section.isCollapsed ? "Expand" : "Collapse"}
           </button>
-          <button type="button" className="button button--ghost button--danger" onClick={onDeleteBlock}>
+          <button type="button" className="button button--ghost button--danger" onClick={onDeleteSection}>
             Delete
           </button>
         </div>
       </header>
 
-      {!block.isCollapsed ? (
+      {!section.isCollapsed ? (
         <div className="block-card__body">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
-            onDragStart={({ active }: DragStartEvent) => setActiveQuestionId(active.id)}
-            onDragOver={({ over }) => setOverQuestionId(over?.id ?? null)}
+            onDragStart={({ active }: DragStartEvent) => setActiveBlockId(active.id)}
+            onDragOver={({ over }) => setOverBlockId(over?.id ?? null)}
             onDragCancel={() => {
-              setActiveQuestionId(null);
-              setOverQuestionId(null);
+              setActiveBlockId(null);
+              setOverBlockId(null);
             }}
-            onDragEnd={handleQuestionDragEnd}
+            onDragEnd={handleBlockDragEnd}
           >
-            <SortableContext items={questionIds} strategy={verticalListSortingStrategy}>
+            <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
               <div className="block-card__questions">
-                {block.questions.length === 0 ? (
+                {section.blocks.length === 0 ? (
                   <div className="empty-state">
-                    <p className="eyebrow">No items yet</p>
-                    <p>Add a question or an informational title inside this block.</p>
+                    <p className="eyebrow">No blocks yet</p>
+                    <p>Add a content block or input block inside this section.</p>
                   </div>
                 ) : (
-                  block.questions.map((question, questionIndex) => (
-                    <QuestionCard
-                      key={question.id}
-                      blockId={block.id}
-                      question={question}
-                      index={questionIndex}
-                      blockTargets={availableTargets}
-                      dropIndicator={getDropIndicator(
-                        questionIds,
-                        question.id,
-                        activeQuestionId,
-                        overQuestionId,
-                      )}
+                  section.blocks.map((block, blockIndex) => (
+                    <BlockEditorCard
+                      key={block.id}
+                      sectionId={section.id}
+                      block={block}
+                      index={blockIndex}
+                      sectionTargets={availableTargets}
+                      dropIndicator={getDropIndicator(blockIds, block.id, activeBlockId, overBlockId)}
                       languages={languages}
                       defaultLanguage={defaultLanguage}
                       translations={translations}
                       onUpdateTranslation={onUpdateTranslation}
-                      onTypeChange={(value) => onQuestionTypeChange(question.id, value)}
-                      onToggle={(field, value) => onQuestionToggle(question.id, field, value)}
-                      onDuplicate={() => onDuplicateQuestion(question.id)}
-                      onDelete={() => onDeleteQuestion(question.id)}
-                      onCollapse={() => onToggleQuestion(question.id)}
-                      onAddOption={() => onAddOption(question.id)}
-                      onDeleteOption={(optionId) => onDeleteOption(question.id, optionId)}
-                      onMoveOption={(fromIndex, toIndex) => onMoveOption(question.id, fromIndex, toIndex)}
-                      onSetOptionRule={(optionId, rule) => onSetOptionRule(question.id, optionId, rule)}
-                      onSetOtherOptionRule={(rule) => onSetOtherOptionRule(question.id, rule)}
+                      onTypeChange={(value) => onBlockTypeChange(block.id, value)}
+                      onToggle={(field, value) => onBlockToggle(block.id, field, value)}
+                      onDuplicate={() => onDuplicateBlock(block.id)}
+                      onDelete={() => onDeleteBlock(block.id)}
+                      onCollapse={() => onToggleBlock(block.id)}
+                      onAddOption={() => onAddOption(block.id)}
+                      onDeleteOption={(optionId) => onDeleteOption(block.id, optionId)}
+                      onMoveOption={(fromIndex, toIndex) => onMoveOption(block.id, fromIndex, toIndex)}
+                      onSetOptionRule={(optionId, rule) => onSetOptionRule(block.id, optionId, rule)}
+                      onSetOtherOptionRule={(rule) => onSetOtherOptionRule(block.id, rule)}
                     />
                   ))
                 )}
@@ -220,29 +215,25 @@ export function BlockCard({
           </DndContext>
 
           <div className="add-row">
-            <span className="eyebrow">Add item</span>
+            <span className="eyebrow">Add block</span>
             <div className="button-group">
-              <button
-                type="button"
-                className="button button--secondary"
-                onClick={() => onAddQuestion("content")}
-              >
+              <button type="button" className="button button--secondary" onClick={() => onAddBlock("content")}>
                 Content
               </button>
-              <button type="button" className="button button--secondary" onClick={() => onAddQuestion("text")}>
+              <button type="button" className="button button--secondary" onClick={() => onAddBlock("text")}>
                 Text
               </button>
               <button
                 type="button"
                 className="button button--secondary"
-                onClick={() => onAddQuestion("single_choice")}
+                onClick={() => onAddBlock("single_choice")}
               >
                 Single choice
               </button>
               <button
                 type="button"
                 className="button button--secondary"
-                onClick={() => onAddQuestion("multiple_choice")}
+                onClick={() => onAddBlock("multiple_choice")}
               >
                 Multiple choice
               </button>
@@ -251,11 +242,11 @@ export function BlockCard({
 
           <div className="block-card__footer">
             <FlowRuleFields
-              idPrefix={`block-rule-${block.id}`}
-              label="After block"
-              rule={block.afterBlock}
+              idPrefix={`section-rule-${section.id}`}
+              label="After section"
+              rule={section.afterSection}
               targets={availableTargets}
-              onChange={onSetBlockRule}
+              onChange={onSetSectionRule}
             />
           </div>
         </div>

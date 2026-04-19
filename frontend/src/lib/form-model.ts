@@ -1,23 +1,23 @@
 import type {
-  ChoiceQuestion,
-  ContentQuestion,
-  FormBlock,
+  BlockType,
+  ChoiceBlock,
+  ContentBlock,
   FormDefinition,
   FormLanguage,
+  FormBlock,
   FormOption,
-  PersistedContentQuestion,
-  PersistedFormBlock,
-  PersistedFormDefinition,
-  PersistedFormQuestion,
-  FormQuestion,
+  FormSection,
   FormTranslations,
-  MultipleChoiceQuestion,
+  MultipleChoiceBlock,
   NavigationMode,
   NavigationRule,
-  QuestionType,
-  SingleChoiceQuestion,
-  TextQuestion,
-  TranslationKey,
+  PersistedContentBlock,
+  PersistedFormBlock,
+  PersistedFormDefinition,
+  PersistedFormSection,
+  SingleChoiceBlock,
+  TextBlock,
+  TranslationId,
 } from "./types";
 
 const createId = () => {
@@ -31,10 +31,10 @@ const createId = () => {
   return Array.from({ length: 15 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
 };
 
-export const createTranslationKey = () => createId();
+export const createTranslationId = () => createId();
 export const createLanguageId = () => createId();
 
-export const QUESTION_TYPE_OPTIONS: Array<{ value: QuestionType; label: string }> = [
+export const BLOCK_TYPE_OPTIONS: Array<{ value: BlockType; label: string }> = [
   { value: "content", label: "Content" },
   { value: "text", label: "Text" },
   { value: "single_choice", label: "Single choice" },
@@ -42,25 +42,24 @@ export const QUESTION_TYPE_OPTIONS: Array<{ value: QuestionType; label: string }
 ];
 
 export const NAVIGATION_OPTIONS: Array<{ value: NavigationMode; label: string }> = [
-  { value: "next", label: "Continue to next block" },
-  { value: "block", label: "Go to a specific block" },
+  { value: "next", label: "Continue to next section" },
+  { value: "section", label: "Go to a specific section" },
   { value: "submit", label: "Submit form" },
 ];
 
-export const supportsOptions = (type: QuestionType) => type === "single_choice" || type === "multiple_choice";
+export const blockHasOptions = (type: BlockType) => type === "single_choice" || type === "multiple_choice";
 
-export const supportsOptionNavigation = (type: QuestionType) => type === "single_choice";
+export const blockHasOptionNavigation = (type: BlockType) => type === "single_choice";
 
 export const createNavigationRule = (
   mode: NavigationMode = "next",
-  targetBlockId: string | null = null,
+  targetSectionId: string | null = null,
 ): NavigationRule => ({
   mode,
-  targetBlockId: mode === "block" ? targetBlockId : null,
+  targetSectionId: mode === "section" ? targetSectionId : null,
 });
 
 export const createFormLanguage = (languages: FormLanguage[]): FormLanguage => {
-  let index = languages.length + 1;
   let nextId = createLanguageId();
 
   while (languages.some((language) => language.id === nextId)) {
@@ -69,79 +68,77 @@ export const createFormLanguage = (languages: FormLanguage[]): FormLanguage => {
 
   return {
     id: nextId,
-    label: `Language ${index}`,
+    label: `Language ${languages.length + 1}`,
   };
 };
 
 export const createTranslationEntries = (
-  keys: Array<TranslationKey | null | undefined>,
+  keys: Array<TranslationId | null | undefined>,
 ): FormTranslations =>
-  Object.fromEntries(keys.filter((key): key is TranslationKey => Boolean(key)).map((key) => [key, {}]));
+  Object.fromEntries(keys.filter((key): key is TranslationId => Boolean(key)).map((key) => [key, {}]));
 
 export const createOption = (): FormOption => ({
   id: createId(),
-  label: createTranslationKey(),
+  label: createTranslationId(),
   navigation: createNavigationRule(),
 });
 
-export const isContentQuestion = (
-  question: FormQuestion | PersistedFormQuestion,
-): question is ContentQuestion | PersistedContentQuestion => question.type === "content";
+export const isContentBlock = (
+  block: FormBlock | PersistedFormBlock,
+): block is ContentBlock | PersistedContentBlock => block.type === "content";
 
-export const isTextQuestion = (
-  question: FormQuestion | PersistedFormQuestion,
-): question is TextQuestion => question.type === "text";
+export const isTextBlock = (block: FormBlock | PersistedFormBlock): block is TextBlock => block.type === "text";
 
-export const isSingleChoiceQuestion = (
-  question: FormQuestion | PersistedFormQuestion,
-): question is SingleChoiceQuestion => question.type === "single_choice";
+export const isSingleChoiceBlock = (
+  block: FormBlock | PersistedFormBlock,
+): block is SingleChoiceBlock => block.type === "single_choice";
 
-export const isMultipleChoiceQuestion = (
-  question: FormQuestion | PersistedFormQuestion,
-): question is MultipleChoiceQuestion => question.type === "multiple_choice";
+export const isMultipleChoiceBlock = (
+  block: FormBlock | PersistedFormBlock,
+): block is MultipleChoiceBlock => block.type === "multiple_choice";
 
-export const isChoiceQuestion = (
-  question: FormQuestion | PersistedFormQuestion,
-): question is ChoiceQuestion => isSingleChoiceQuestion(question) || isMultipleChoiceQuestion(question);
+export const isChoiceBlock = (
+  block: FormBlock | PersistedFormBlock,
+): block is ChoiceBlock => isSingleChoiceBlock(block) || isMultipleChoiceBlock(block);
 
-export const createContentQuestion = (): ContentQuestion => ({
+export const createContentBlock = (): ContentBlock => ({
   id: createId(),
   type: "content",
-  content: createTranslationKey(),
+  content: createTranslationId(),
   isCollapsed: false,
 });
 
-export const createTextQuestion = (): TextQuestion => ({
+export const createTextBlock = (): TextBlock => ({
   id: createId(),
   type: "text",
-  title: createTranslationKey(),
-  description: createTranslationKey(),
+  title: createTranslationId(),
+  description: createTranslationId(),
   required: false,
   multilineText: false,
-  placeholder: createTranslationKey(),
+  placeholder: createTranslationId(),
   isCollapsed: false,
 });
 
-export const createSingleChoiceQuestion = (): SingleChoiceQuestion => ({
+export const createSingleChoiceBlock = (): SingleChoiceBlock => ({
   id: createId(),
   type: "single_choice",
-  title: createTranslationKey(),
-  description: createTranslationKey(),
+  title: createTranslationId(),
+  description: createTranslationId(),
   required: false,
   showAsDropdown: false,
+  routeByAnswer: false,
   allowOther: false,
   otherOptionLabel: null,
   otherOptionNavigation: createNavigationRule(),
-  routeByAnswer: false,
   options: [createOption(), createOption()],
   isCollapsed: false,
 });
 
-export const createMultipleChoiceQuestion = (): MultipleChoiceQuestion => ({
+export const createMultipleChoiceBlock = (): MultipleChoiceBlock => ({
   id: createId(),
   type: "multiple_choice",
-  title: createTranslationKey(),
-  description: createTranslationKey(),
+  title: createTranslationId(),
+  description: createTranslationId(),
   required: false,
   allowOther: false,
   otherOptionLabel: null,
@@ -149,44 +146,44 @@ export const createMultipleChoiceQuestion = (): MultipleChoiceQuestion => ({
   isCollapsed: false,
 });
 
-export const createQuestion = (type: QuestionType = "text"): FormQuestion => {
+export const createBlock = (type: BlockType = "text"): FormBlock => {
   switch (type) {
     case "content":
-      return createContentQuestion();
+      return createContentBlock();
     case "single_choice":
-      return createSingleChoiceQuestion();
+      return createSingleChoiceBlock();
     case "multiple_choice":
-      return createMultipleChoiceQuestion();
+      return createMultipleChoiceBlock();
     case "text":
     default:
-      return createTextQuestion();
+      return createTextBlock();
   }
 };
 
-export const createBlock = (): FormBlock => ({
+export const createSection = (): FormSection => ({
   id: createId(),
-  questions: [],
-  afterBlock: createNavigationRule(),
+  blocks: [],
+  afterSection: createNavigationRule(),
   isCollapsed: false,
 });
 
 export const createForm = (): FormDefinition => {
-  const defaultLanguageId = createLanguageId();
+  const defaultLanguage = createLanguageId();
 
   return {
     title: "",
     description: "",
     i18n: {
-      languages: [{ id: defaultLanguageId, label: "English" }],
-      defaultLanguage: defaultLanguageId,
+      languages: [{ id: defaultLanguage, label: "English" }],
+      defaultLanguage,
     },
     translations: {},
-    blocks: [],
+    sections: [],
   };
 };
 
-const copyTranslationEntry = (translations: FormTranslations, sourceKey: TranslationKey) => {
-  const source = translations[sourceKey];
+const copyTranslationEntry = (translations: FormTranslations, sourceId: TranslationId) => {
+  const source = translations[sourceId];
 
   if (!source) {
     return {};
@@ -196,13 +193,14 @@ const copyTranslationEntry = (translations: FormTranslations, sourceKey: Transla
 };
 
 export const duplicateOption = (option: FormOption, translations: FormTranslations) => {
-  const label = createTranslationKey();
+  const label = createTranslationId();
 
   return {
     option: {
       ...option,
       id: createId(),
       label,
+      navigation: { ...option.navigation },
     },
     translations: {
       [label]: copyTranslationEntry(translations, option.label),
@@ -210,120 +208,91 @@ export const duplicateOption = (option: FormOption, translations: FormTranslatio
   };
 };
 
-export const duplicateQuestion = (question: FormQuestion, translations: FormTranslations) => {
-  const content = isContentQuestion(question) ? createTranslationKey() : null;
-  const title = !isContentQuestion(question) ? createTranslationKey() : null;
-  const description = !isContentQuestion(question) ? createTranslationKey() : null;
-  const placeholder = isTextQuestion(question) ? createTranslationKey() : null;
-  const contentTranslation =
-    content && isContentQuestion(question)
-      ? copyTranslationEntry(translations, question.content)
-      : null;
-  const titleTranslation =
-    title && !isContentQuestion(question)
-      ? copyTranslationEntry(translations, question.title)
-      : null;
-  const descriptionTranslation =
-    description && !isContentQuestion(question)
-      ? copyTranslationEntry(translations, question.description)
-      : null;
-  const placeholderTranslation =
-    placeholder && isTextQuestion(question)
-      ? copyTranslationEntry(translations, question.placeholder)
-      : null;
-  const duplicatedOptions = isChoiceQuestion(question)
-    ? question.options.map((option) => duplicateOption(option, translations))
-    : [];
-  const otherOptionLabel = isChoiceQuestion(question) && question.otherOptionLabel ? createTranslationKey() : null;
+export const duplicateBlock = (block: FormBlock, translations: FormTranslations) => {
+  const content = isContentBlock(block) ? createTranslationId() : null;
+  const title = !isContentBlock(block) ? createTranslationId() : null;
+  const description = !isContentBlock(block) ? createTranslationId() : null;
+  const placeholder = isTextBlock(block) ? createTranslationId() : null;
+  const duplicatedOptions = isChoiceBlock(block) ? block.options.map((option) => duplicateOption(option, translations)) : [];
+  const otherOptionLabel = isChoiceBlock(block) && block.otherOptionLabel ? createTranslationId() : null;
 
   return {
-    question:
-      question.type === "content"
+    block:
+      block.type === "content"
         ? ({
             id: createId(),
             type: "content",
             content: content!,
             isCollapsed: false,
-          } satisfies ContentQuestion)
-        : question.type === "text"
+          } satisfies ContentBlock)
+        : block.type === "text"
           ? ({
               id: createId(),
               type: "text",
               title: title!,
               description: description!,
-              required: question.required,
-              multilineText: question.multilineText,
+              required: block.required,
+              multilineText: block.multilineText,
               placeholder: placeholder!,
               isCollapsed: false,
-            } satisfies TextQuestion)
-          : question.type === "single_choice"
+            } satisfies TextBlock)
+          : block.type === "single_choice"
             ? ({
                 id: createId(),
                 type: "single_choice",
                 title: title!,
                 description: description!,
-                required: question.required,
-                showAsDropdown: question.showAsDropdown,
-                allowOther: question.allowOther,
+                required: block.required,
+                showAsDropdown: block.showAsDropdown,
+                routeByAnswer: block.routeByAnswer,
+                allowOther: block.allowOther,
                 otherOptionLabel,
-                otherOptionNavigation: question.otherOptionNavigation,
-                routeByAnswer: question.routeByAnswer,
+                otherOptionNavigation: { ...block.otherOptionNavigation },
                 options: duplicatedOptions.map((entry) => entry.option),
                 isCollapsed: false,
-              } satisfies SingleChoiceQuestion)
+              } satisfies SingleChoiceBlock)
             : ({
                 id: createId(),
                 type: "multiple_choice",
                 title: title!,
                 description: description!,
-                required: question.required,
-                allowOther: question.allowOther,
+                required: block.required,
+                allowOther: block.allowOther,
                 otherOptionLabel,
                 options: duplicatedOptions.map((entry) => entry.option),
                 isCollapsed: false,
-              } satisfies MultipleChoiceQuestion),
+              } satisfies MultipleChoiceBlock),
     translations: {
-      ...(content && contentTranslation
-        ? {
-            [content]: contentTranslation,
-          }
+      ...(content && isContentBlock(block)
+        ? { [content]: copyTranslationEntry(translations, block.content) }
         : {}),
-      ...(title && titleTranslation
-        ? {
-            [title]: titleTranslation,
-          }
+      ...(title && !isContentBlock(block) ? { [title]: copyTranslationEntry(translations, block.title) } : {}),
+      ...(description && !isContentBlock(block)
+        ? { [description]: copyTranslationEntry(translations, block.description) }
         : {}),
-      ...(description && descriptionTranslation
-        ? {
-            [description]: descriptionTranslation,
-          }
+      ...(placeholder && isTextBlock(block)
+        ? { [placeholder]: copyTranslationEntry(translations, block.placeholder) }
         : {}),
-      ...(placeholder && placeholderTranslation
-        ? {
-            [placeholder]: placeholderTranslation,
-          }
-        : {}),
-      ...(otherOptionLabel && isChoiceQuestion(question) && question.otherOptionLabel
-        ? {
-            [otherOptionLabel]: copyTranslationEntry(translations, question.otherOptionLabel),
-          }
+      ...(otherOptionLabel && isChoiceBlock(block) && block.otherOptionLabel
+        ? { [otherOptionLabel]: copyTranslationEntry(translations, block.otherOptionLabel) }
         : {}),
       ...Object.assign({}, ...duplicatedOptions.map((entry) => entry.translations)),
     },
   };
 };
 
-export const duplicateBlock = (block: FormBlock, translations: FormTranslations) => {
-  const duplicatedQuestions = block.questions.map((question) => duplicateQuestion(question, translations));
+export const duplicateSection = (section: FormSection, translations: FormTranslations) => {
+  const duplicatedBlocks = section.blocks.map((block) => duplicateBlock(block, translations));
 
   return {
-    block: {
-      ...block,
+    section: {
+      ...section,
       id: createId(),
       isCollapsed: false,
-      questions: duplicatedQuestions.map((entry) => entry.question),
+      afterSection: { ...section.afterSection },
+      blocks: duplicatedBlocks.map((entry) => entry.block),
     },
-    translations: Object.assign({}, ...duplicatedQuestions.map((entry) => entry.translations)),
+    translations: Object.assign({}, ...duplicatedBlocks.map((entry) => entry.translations)),
   };
 };
 
@@ -346,165 +315,176 @@ export const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number) => 
 
 export const getTranslationValue = (
   translations: FormTranslations,
-  translationKey: TranslationKey | null,
+  translationId: TranslationId | null,
   languageId: string,
 ) => {
-  if (!translationKey) {
+  if (!translationId) {
     return "";
   }
 
-  return translations[translationKey]?.[languageId] ?? "";
+  return translations[translationId]?.[languageId] ?? "";
 };
 
-const collectReferencedTranslationKeys = (form: FormDefinition) => {
-  const keys = new Set<TranslationKey>();
+const collectReferencedTranslationIds = (form: FormDefinition) => {
+  const ids = new Set<TranslationId>();
 
-  form.blocks.forEach((block) => {
-    block.questions.forEach((question) => {
-      if (isContentQuestion(question)) {
-        keys.add(question.content);
+  form.sections.forEach((section) => {
+    section.blocks.forEach((block) => {
+      if (isContentBlock(block)) {
+        ids.add(block.content);
       } else {
-        keys.add(question.title);
-        keys.add(question.description);
-      }
-      if (isTextQuestion(question)) {
-        keys.add(question.placeholder);
+        ids.add(block.title);
+        ids.add(block.description);
       }
 
-      if (isChoiceQuestion(question)) {
-        question.options.forEach((option) => {
-          keys.add(option.label);
+      if (isTextBlock(block)) {
+        ids.add(block.placeholder);
+      }
+
+      if (isChoiceBlock(block)) {
+        block.options.forEach((option) => {
+          ids.add(option.label);
         });
-      }
 
-      if (isChoiceQuestion(question) && question.allowOther && question.otherOptionLabel) {
-        keys.add(question.otherOptionLabel);
+        if (block.allowOther && block.otherOptionLabel) {
+          ids.add(block.otherOptionLabel);
+        }
       }
     });
   });
 
-  return keys;
+  return ids;
 };
 
 export const normalizeNavigationRule = (
   rule: NavigationRule,
-  validBlockIds: Set<string>,
+  validSectionIds: Set<string>,
 ): NavigationRule => {
-  if (rule.mode === "block") {
-    if (!rule.targetBlockId || !validBlockIds.has(rule.targetBlockId)) {
+  if (rule.mode === "section") {
+    if (!rule.targetSectionId || !validSectionIds.has(rule.targetSectionId)) {
       return createNavigationRule("next");
     }
 
-    return rule;
+    return {
+      mode: "section",
+      targetSectionId: rule.targetSectionId,
+    };
   }
 
   return {
-    ...rule,
-    targetBlockId: null,
+    mode: rule.mode,
+    targetSectionId: null,
   };
 };
 
-export const normalizeQuestionType = (
-  question: FormQuestion,
-  nextType: QuestionType,
-): FormQuestion => {
-  const promptKey = isContentQuestion(question) ? question.content : question.title;
-  const base = {
-    id: question.id,
-    isCollapsed: question.isCollapsed,
-  };
-  const required = !isContentQuestion(question) ? question.required : false;
+export const normalizeBlockType = (block: FormBlock, nextType: BlockType): FormBlock => {
+  const promptTranslation = isContentBlock(block) ? block.content : block.title;
+  const descriptionTranslation = !isContentBlock(block) ? block.description : createTranslationId();
+  const required = !isContentBlock(block) ? block.required : false;
   const options =
-    isChoiceQuestion(question) && question.options.length > 0 ? question.options : [createOption(), createOption()];
-  const allowOther = isChoiceQuestion(question) ? question.allowOther : false;
-  const otherOptionLabel = isChoiceQuestion(question) ? question.otherOptionLabel : null;
+    isChoiceBlock(block) && block.options.length > 0 ? block.options : [createOption(), createOption()];
+  const allowOther = isChoiceBlock(block) ? block.allowOther : false;
+  const otherOptionLabel = isChoiceBlock(block) ? block.otherOptionLabel : null;
 
   switch (nextType) {
     case "content":
       return {
-        ...base,
+        id: block.id,
         type: "content",
-        content: isContentQuestion(question) ? question.content : promptKey,
+        content: promptTranslation,
+        isCollapsed: block.isCollapsed,
       };
 
     case "text":
       return {
-        ...base,
+        id: block.id,
         type: "text",
-        title: isTextQuestion(question) || isChoiceQuestion(question) ? question.title : promptKey,
-        description: isTextQuestion(question) || isChoiceQuestion(question) ? question.description : createTranslationKey(),
+        title: isContentBlock(block) ? promptTranslation : block.title,
+        description: descriptionTranslation,
         required,
-        multilineText: isTextQuestion(question) ? question.multilineText : false,
-        placeholder: isTextQuestion(question) ? question.placeholder : createTranslationKey(),
+        multilineText: isTextBlock(block) ? block.multilineText : false,
+        placeholder: isTextBlock(block) ? block.placeholder : createTranslationId(),
+        isCollapsed: block.isCollapsed,
       };
 
-    case "single_choice":
+    case "single_choice": {
+      const showAsDropdown = isSingleChoiceBlock(block) ? block.showAsDropdown : false;
+      const nextAllowOther = showAsDropdown ? false : isChoiceBlock(block) ? allowOther : false;
+
       return {
-        ...base,
+        id: block.id,
         type: "single_choice",
-        title: isTextQuestion(question) || isChoiceQuestion(question) ? question.title : promptKey,
-        description: isTextQuestion(question) || isChoiceQuestion(question) ? question.description : createTranslationKey(),
+        title: isContentBlock(block) ? promptTranslation : block.title,
+        description: descriptionTranslation,
         required,
-        showAsDropdown: isSingleChoiceQuestion(question) ? question.showAsDropdown : false,
-        routeByAnswer: isSingleChoiceQuestion(question) ? question.routeByAnswer : false,
-        allowOther: isSingleChoiceQuestion(question) ? question.showAsDropdown ? false : question.allowOther : allowOther,
-        otherOptionLabel: isSingleChoiceQuestion(question) ? question.showAsDropdown ? null : question.otherOptionLabel : otherOptionLabel,
-        otherOptionNavigation: isSingleChoiceQuestion(question)
-          ? question.otherOptionNavigation
+        showAsDropdown,
+        routeByAnswer: isSingleChoiceBlock(block) ? block.routeByAnswer : false,
+        allowOther: nextAllowOther,
+        otherOptionLabel: nextAllowOther ? otherOptionLabel : null,
+        otherOptionNavigation: isSingleChoiceBlock(block)
+          ? { ...block.otherOptionNavigation }
           : createNavigationRule(),
         options,
+        isCollapsed: block.isCollapsed,
       };
+    }
 
     case "multiple_choice":
       return {
-        ...base,
+        id: block.id,
         type: "multiple_choice",
-        title: isTextQuestion(question) || isChoiceQuestion(question) ? question.title : promptKey,
-        description: isTextQuestion(question) || isChoiceQuestion(question) ? question.description : createTranslationKey(),
+        title: isContentBlock(block) ? promptTranslation : block.title,
+        description: descriptionTranslation,
         required,
         allowOther,
         otherOptionLabel,
         options,
+        isCollapsed: block.isCollapsed,
       };
 
     default:
-      return question;
+      return block;
   }
 };
 
 export const normalizeForm = (form: FormDefinition): FormDefinition => {
-  const blocks = form.blocks;
-  const validBlockIds = new Set(blocks.map((block) => block.id));
+  const sections = form.sections ?? [];
+  const validSectionIds = new Set(sections.map((section) => section.id));
   const validLanguageIds = new Set(form.i18n.languages.map((language) => language.id));
 
-  const normalizedBlocks = blocks.map((block) => ({
-    ...block,
-    isCollapsed: block.isCollapsed ?? false,
-    afterBlock: normalizeNavigationRule(block.afterBlock, validBlockIds),
-    questions: block.questions.map((question) => {
-      const normalizedQuestion = normalizeQuestionType(question, question.type);
+  const normalizedSections = sections.map((section) => ({
+    ...section,
+    isCollapsed: section.isCollapsed ?? false,
+    afterSection: normalizeNavigationRule(section.afterSection, validSectionIds),
+    blocks: section.blocks.map((block) => {
+      const normalizedBlock = normalizeBlockType(block, block.type);
 
-      if (isSingleChoiceQuestion(normalizedQuestion)) {
+      if (isSingleChoiceBlock(normalizedBlock)) {
+        const allowOther = normalizedBlock.showAsDropdown ? false : normalizedBlock.allowOther;
+
         return {
-          ...normalizedQuestion,
-          isCollapsed: normalizedQuestion.isCollapsed ?? false,
-          otherOptionNavigation: normalizedQuestion.routeByAnswer
-            ? normalizeNavigationRule(normalizedQuestion.otherOptionNavigation, validBlockIds)
-            : createNavigationRule(),
-          options: normalizedQuestion.options.map((option) => ({
+          ...normalizedBlock,
+          isCollapsed: normalizedBlock.isCollapsed ?? false,
+          allowOther,
+          otherOptionLabel: allowOther ? normalizedBlock.otherOptionLabel : null,
+          otherOptionNavigation:
+            allowOther && normalizedBlock.routeByAnswer
+              ? normalizeNavigationRule(normalizedBlock.otherOptionNavigation, validSectionIds)
+              : createNavigationRule(),
+          options: normalizedBlock.options.map((option) => ({
             ...option,
-            navigation: normalizedQuestion.routeByAnswer
-              ? normalizeNavigationRule(option.navigation, validBlockIds)
+            navigation: normalizedBlock.routeByAnswer
+              ? normalizeNavigationRule(option.navigation, validSectionIds)
               : createNavigationRule(),
           })),
         };
       }
 
-      if (isMultipleChoiceQuestion(normalizedQuestion)) {
+      if (isMultipleChoiceBlock(normalizedBlock)) {
         return {
-          ...normalizedQuestion,
-          isCollapsed: normalizedQuestion.isCollapsed ?? false,
-          options: normalizedQuestion.options.map((option) => ({
+          ...normalizedBlock,
+          isCollapsed: normalizedBlock.isCollapsed ?? false,
+          options: normalizedBlock.options.map((option) => ({
             ...option,
             navigation: createNavigationRule(),
           })),
@@ -512,29 +492,29 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
       }
 
       return {
-        ...normalizedQuestion,
-        isCollapsed: normalizedQuestion.isCollapsed ?? false,
+        ...normalizedBlock,
+        isCollapsed: normalizedBlock.isCollapsed ?? false,
       };
     }),
   }));
 
-  const normalizedForm = {
+  const normalizedForm: FormDefinition = {
     title: form.title ?? "",
     description: form.description ?? "",
     i18n: {
-      languages: form.i18n.languages,
-      defaultLanguage: form.i18n.defaultLanguage,
+      languages: form.i18n.languages ?? [],
+      defaultLanguage: form.i18n.defaultLanguage ?? "",
     },
-    translations: form.translations,
-    blocks: normalizedBlocks,
+    translations: form.translations ?? {},
+    sections: normalizedSections,
   };
 
-  const referencedKeys = collectReferencedTranslationKeys(normalizedForm);
+  const referencedTranslations = collectReferencedTranslationIds(normalizedForm);
   const translations = Object.fromEntries(
-    [...referencedKeys].map((translationKey) => [
-      translationKey,
+    [...referencedTranslations].map((translationId) => [
+      translationId,
       Object.fromEntries(
-        Object.entries(normalizedForm.translations[translationKey] ?? {}).filter(([languageId]) =>
+        Object.entries(normalizedForm.translations[translationId] ?? {}).filter(([languageId]) =>
           validLanguageIds.has(languageId),
         ),
       ),
@@ -552,76 +532,74 @@ export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefi
   description: form.description,
   i18n: form.i18n,
   translations: form.translations,
-  blocks: form.blocks.map(
-    (block): PersistedFormBlock => ({
-      id: block.id,
-      afterBlock: block.afterBlock,
-      questions: block.questions.map(
-        (question): PersistedFormQuestion => {
-          switch (question.type) {
-            case "content":
-              return {
-                id: question.id,
-                type: "content",
-                content: question.content,
-              };
-            case "text":
-              return {
-                id: question.id,
-                type: "text",
-                title: question.title,
-                description: question.description,
-                required: question.required,
-                multilineText: question.multilineText,
-                placeholder: question.placeholder,
-              };
-            case "single_choice":
-              return {
-                id: question.id,
-                type: "single_choice",
-                title: question.title,
-                description: question.description,
-                required: question.required,
-                showAsDropdown: question.showAsDropdown,
-                routeByAnswer: question.routeByAnswer,
-                allowOther: question.allowOther,
-                ...(question.allowOther && question.otherOptionLabel
-                  ? {
-                      otherOptionLabel: question.otherOptionLabel,
-                    }
-                  : {}),
-                ...(question.allowOther && question.routeByAnswer
-                  ? {
-                      otherOptionNavigation: question.otherOptionNavigation,
-                    }
-                  : {}),
-                options: question.options.map((option) => ({
-                  id: option.id,
-                  label: option.label,
-                  ...(question.routeByAnswer ? { navigation: option.navigation } : {}),
-                })),
-              };
-            case "multiple_choice":
-              return {
-                id: question.id,
-                type: "multiple_choice",
-                title: question.title,
-                description: question.description,
-                required: question.required,
-                allowOther: question.allowOther,
-                ...(question.allowOther && question.otherOptionLabel
-                  ? {
-                      otherOptionLabel: question.otherOptionLabel,
-                    }
-                  : {}),
-                options: question.options.map((option) => ({
-                  id: option.id,
-                  label: option.label,
-                })),
-              };
-          }
-        },
-      ),
+  sections: form.sections.map(
+    (section): PersistedFormSection => ({
+      id: section.id,
+      afterSection: section.afterSection,
+      blocks: section.blocks.map((block): PersistedFormBlock => {
+        switch (block.type) {
+          case "content":
+            return {
+              id: block.id,
+              type: "content",
+              content: block.content,
+            };
+          case "text":
+            return {
+              id: block.id,
+              type: "text",
+              title: block.title,
+              description: block.description,
+              required: block.required,
+              multilineText: block.multilineText,
+              placeholder: block.placeholder,
+            };
+          case "single_choice":
+            return {
+              id: block.id,
+              type: "single_choice",
+              title: block.title,
+              description: block.description,
+              required: block.required,
+              showAsDropdown: block.showAsDropdown,
+              routeByAnswer: block.routeByAnswer,
+              allowOther: block.allowOther,
+              ...(block.allowOther && block.otherOptionLabel
+                ? {
+                    otherOptionLabel: block.otherOptionLabel,
+                  }
+                : {}),
+              ...(block.allowOther && block.routeByAnswer
+                ? {
+                    otherOptionNavigation: block.otherOptionNavigation,
+                  }
+                : {}),
+              options: block.options.map((option) => ({
+                id: option.id,
+                label: option.label,
+                ...(block.routeByAnswer ? { navigation: option.navigation } : {}),
+              })),
+            };
+          case "multiple_choice":
+            return {
+              id: block.id,
+              type: "multiple_choice",
+              title: block.title,
+              description: block.description,
+              required: block.required,
+              allowOther: block.allowOther,
+              ...(block.allowOther && block.otherOptionLabel
+                ? {
+                    otherOptionLabel: block.otherOptionLabel,
+                  }
+                : {}),
+              options: block.options.map((option) => ({
+                id: option.id,
+                label: option.label,
+              })),
+            };
+        }
+      }),
     }),
   ),
 });
@@ -632,28 +610,28 @@ export const hydrateFormDefinition = (form: PersistedFormDefinition): FormDefini
     description: form.description,
     i18n: form.i18n,
     translations: form.translations,
-    blocks: form.blocks.map((block) => ({
-      id: block.id,
-      afterBlock: block.afterBlock,
+    sections: form.sections.map((section) => ({
+      id: section.id,
+      afterSection: section.afterSection,
       isCollapsed: false,
-      questions: block.questions.map((question) => {
-        switch (question.type) {
+      blocks: section.blocks.map((block) => {
+        switch (block.type) {
           case "content":
             return {
-              ...question,
+              ...block,
               isCollapsed: false,
             };
           case "text":
             return {
-              ...question,
+              ...block,
               isCollapsed: false,
             };
           case "single_choice":
             return {
-              ...question,
-              otherOptionLabel: question.otherOptionLabel ?? null,
-              otherOptionNavigation: question.otherOptionNavigation ?? createNavigationRule(),
-              options: question.options.map((option) => ({
+              ...block,
+              otherOptionLabel: block.otherOptionLabel ?? null,
+              otherOptionNavigation: block.otherOptionNavigation ?? createNavigationRule(),
+              options: block.options.map((option) => ({
                 id: option.id,
                 label: option.label,
                 navigation: option.navigation ?? createNavigationRule(),
@@ -662,12 +640,12 @@ export const hydrateFormDefinition = (form: PersistedFormDefinition): FormDefini
             };
           case "multiple_choice":
             return {
-              ...question,
-              otherOptionLabel: question.otherOptionLabel ?? null,
-              options: question.options.map((option) => ({
+              ...block,
+              otherOptionLabel: block.otherOptionLabel ?? null,
+              options: block.options.map((option) => ({
                 id: option.id,
                 label: option.label,
-                navigation: option.navigation ?? createNavigationRule(),
+                navigation: createNavigationRule(),
               })),
               isCollapsed: false,
             };
@@ -685,19 +663,14 @@ export const validateI18nSettings = (form: FormDefinition) => {
   }
 
   form.i18n.languages.forEach((language) => {
-    const id = language.id.trim();
-    const label = language.label.trim();
-
-    if (!id) {
-      issues.push("Every language needs an ID.");
-    } else if (seenIds.has(id)) {
-      issues.push(`Language ID "${id}" is duplicated.`);
+    if (seenIds.has(language.id)) {
+      issues.push("Some language IDs are duplicated.");
     } else {
-      seenIds.add(id);
+      seenIds.add(language.id);
     }
 
-    if (!label) {
-      issues.push(`Language "${id || "Untitled"}" needs a label.`);
+    if (!language.label.trim()) {
+      issues.push(`Language "${language.id}" needs a label.`);
     }
   });
 
@@ -710,52 +683,53 @@ export const validateI18nSettings = (form: FormDefinition) => {
 
 export const validateForm = (form: FormDefinition) => {
   const issues: string[] = [...validateI18nSettings(form)];
-  const blockIds = new Set(form.blocks.map((block) => block.id));
+  const sectionIds = new Set(form.sections.map((section) => section.id));
+  const blockIds = new Set(form.sections.flatMap((section) => section.blocks.map((block) => block.id)));
   const previewLanguage = form.i18n.defaultLanguage;
 
-  form.blocks.forEach((block, blockIndex) => {
-    if (block.afterBlock.mode === "block" && !block.afterBlock.targetBlockId) {
-      issues.push(`Block ${blockIndex + 1} is missing an "After block" target.`);
+  form.sections.forEach((section, sectionIndex) => {
+    if (section.afterSection.mode === "section" && !section.afterSection.targetSectionId) {
+      issues.push(`Section ${sectionIndex + 1} is missing an "After section" target.`);
     }
 
-    block.questions.forEach((question) => {
-      const questionTitle = getTranslationValue(
+    section.blocks.forEach((block) => {
+      const blockTitle = getTranslationValue(
         form.translations,
-        isContentQuestion(question) ? question.content : question.title,
+        isContentBlock(block) ? block.content : block.title,
         previewLanguage,
       );
 
-      if (isChoiceQuestion(question) && question.options.length === 0) {
-        issues.push(`Question "${questionTitle || "Untitled question"}" needs at least one option.`);
+      if (isChoiceBlock(block) && block.options.length === 0) {
+        issues.push(`Block "${blockTitle || "Untitled block"}" needs at least one option.`);
       }
 
-      if (isSingleChoiceQuestion(question) && question.routeByAnswer) {
-        question.options.forEach((option) => {
+      if (isSingleChoiceBlock(block) && block.routeByAnswer) {
+        block.options.forEach((option) => {
           const optionLabel = getTranslationValue(form.translations, option.label, previewLanguage);
 
-          if (option.navigation.mode === "block" && !option.navigation.targetBlockId) {
+          if (option.navigation.mode === "section" && !option.navigation.targetSectionId) {
             issues.push(
-              `Option "${optionLabel || "Untitled option"}" in "${questionTitle || "Untitled question"}" is missing a target block.`,
+              `Option "${optionLabel || "Untitled option"}" in "${blockTitle || "Untitled block"}" is missing a target section.`,
             );
           }
         });
 
-        if (question.allowOther && question.otherOptionNavigation.mode === "block" && !question.otherOptionNavigation.targetBlockId) {
-          const otherLabel = getTranslationValue(
-            form.translations,
-            question.otherOptionLabel,
-            previewLanguage,
-          );
+        if (block.allowOther && block.otherOptionNavigation.mode === "section" && !block.otherOptionNavigation.targetSectionId) {
+          const otherLabel = getTranslationValue(form.translations, block.otherOptionLabel, previewLanguage);
 
           issues.push(
-            `"${otherLabel || "Other"}" in "${questionTitle || "Untitled question"}" is missing a target block.`,
+            `"${otherLabel || "Other"}" in "${blockTitle || "Untitled block"}" is missing a target section.`,
           );
         }
       }
     });
   });
 
-  if (blockIds.size !== form.blocks.length) {
+  if (sectionIds.size !== form.sections.length) {
+    issues.push("Some section IDs are duplicated.");
+  }
+
+  if (blockIds.size !== form.sections.flatMap((section) => section.blocks).length) {
     issues.push("Some block IDs are duplicated.");
   }
 
@@ -767,28 +741,19 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
     return false;
   }
 
-  const candidate = value as Partial<FormDefinition>;
-  const supportedQuestionTypes = new Set<QuestionType>([
-    "content",
-    "text",
-    "single_choice",
-    "multiple_choice",
-  ]);
+  const candidate = value as Partial<PersistedFormDefinition>;
+  const supportedBlockTypes = new Set<BlockType>(["content", "text", "single_choice", "multiple_choice"]);
 
   const hasStringMap = (entry: unknown) =>
-    Boolean(
-      entry &&
-        typeof entry === "object" &&
-        Object.values(entry).every((value) => typeof value === "string"),
-    );
+    Boolean(entry && typeof entry === "object" && Object.values(entry).every((item) => typeof item === "string"));
 
   const hasNavigationRule = (rule: unknown) =>
     Boolean(
       rule &&
         typeof rule === "object" &&
-        ["next", "block", "submit"].includes((rule as NavigationRule).mode) &&
-        (typeof (rule as NavigationRule).targetBlockId === "string" ||
-          (rule as NavigationRule).targetBlockId === null),
+        ["next", "section", "submit"].includes((rule as NavigationRule).mode) &&
+        (typeof (rule as NavigationRule).targetSectionId === "string" ||
+          (rule as NavigationRule).targetSectionId === null),
     );
 
   const hasOptionShape = (option: unknown) =>
@@ -797,70 +762,69 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
         typeof option === "object" &&
         typeof (option as FormOption).id === "string" &&
         typeof (option as FormOption).label === "string" &&
-        ((option as FormOption).navigation === undefined || hasNavigationRule((option as FormOption).navigation)),
+        (((option as FormOption).navigation as unknown) === undefined ||
+          hasNavigationRule((option as FormOption).navigation)),
     );
 
-  const hasQuestionShape = (question: unknown) =>
-    Boolean(question && typeof question === "object" && typeof (question as FormQuestion).id === "string") &&
+  const hasBlockShape = (block: unknown) =>
+    Boolean(block && typeof block === "object" && typeof (block as PersistedFormBlock).id === "string") &&
     (() => {
-      const candidateQuestion = question as PersistedFormQuestion;
+      const candidateBlock = block as PersistedFormBlock;
 
-      if (
-        !supportedQuestionTypes.has(candidateQuestion.type)
-      ) {
+      if (!supportedBlockTypes.has(candidateBlock.type)) {
         return false;
       }
 
-      switch (candidateQuestion.type) {
+      switch (candidateBlock.type) {
         case "content":
-          return typeof candidateQuestion.content === "string";
+          return typeof candidateBlock.content === "string";
         case "text":
           return (
-            typeof candidateQuestion.title === "string" &&
-            typeof candidateQuestion.description === "string" &&
-            typeof candidateQuestion.placeholder === "string" &&
-            typeof candidateQuestion.required === "boolean" &&
-            typeof candidateQuestion.multilineText === "boolean"
+            typeof candidateBlock.title === "string" &&
+            typeof candidateBlock.description === "string" &&
+            typeof candidateBlock.placeholder === "string" &&
+            typeof candidateBlock.required === "boolean" &&
+            typeof candidateBlock.multilineText === "boolean"
           );
         case "single_choice":
           return (
-            typeof candidateQuestion.title === "string" &&
-            typeof candidateQuestion.description === "string" &&
-            typeof candidateQuestion.required === "boolean" &&
-            typeof candidateQuestion.showAsDropdown === "boolean" &&
-            typeof candidateQuestion.routeByAnswer === "boolean" &&
-            typeof candidateQuestion.allowOther === "boolean" &&
-            Array.isArray(candidateQuestion.options) &&
-            candidateQuestion.options.every(hasOptionShape) &&
-            (candidateQuestion.otherOptionLabel === undefined ||
-              typeof candidateQuestion.otherOptionLabel === "string") &&
-            (candidateQuestion.otherOptionNavigation === undefined ||
-              hasNavigationRule(candidateQuestion.otherOptionNavigation))
+            typeof candidateBlock.title === "string" &&
+            typeof candidateBlock.description === "string" &&
+            typeof candidateBlock.required === "boolean" &&
+            typeof candidateBlock.showAsDropdown === "boolean" &&
+            typeof candidateBlock.routeByAnswer === "boolean" &&
+            typeof candidateBlock.allowOther === "boolean" &&
+            Array.isArray(candidateBlock.options) &&
+            candidateBlock.options.every(hasOptionShape) &&
+            (candidateBlock.otherOptionLabel === undefined ||
+              typeof candidateBlock.otherOptionLabel === "string") &&
+            (candidateBlock.otherOptionNavigation === undefined ||
+              hasNavigationRule(candidateBlock.otherOptionNavigation))
           );
         case "multiple_choice":
           return (
-            typeof candidateQuestion.title === "string" &&
-            typeof candidateQuestion.description === "string" &&
-            typeof candidateQuestion.required === "boolean" &&
-            typeof candidateQuestion.allowOther === "boolean" &&
-            Array.isArray(candidateQuestion.options) &&
-            candidateQuestion.options.every(hasOptionShape) &&
-            (candidateQuestion.otherOptionLabel === undefined ||
-              typeof candidateQuestion.otherOptionLabel === "string")
+            typeof candidateBlock.title === "string" &&
+            typeof candidateBlock.description === "string" &&
+            typeof candidateBlock.required === "boolean" &&
+            typeof candidateBlock.allowOther === "boolean" &&
+            Array.isArray(candidateBlock.options) &&
+            candidateBlock.options.every(hasOptionShape) &&
+            (candidateBlock.otherOptionLabel === undefined ||
+              typeof candidateBlock.otherOptionLabel === "string")
           );
         default:
           return false;
       }
     })();
 
-  const hasBlockShape = (block: unknown) =>
+  const hasSectionShape = (section: unknown) =>
     Boolean(
-      block &&
-        typeof block === "object" &&
-        typeof (block as FormBlock).id === "string" &&
-        Array.isArray((block as FormBlock).questions) &&
-        (block as FormBlock).questions.every(hasQuestionShape) &&
-        hasNavigationRule((block as FormBlock).afterBlock),
+      section &&
+        typeof section === "object" &&
+        typeof (section as PersistedFormSection).id === "string" &&
+        Array.isArray((section as PersistedFormSection).blocks) &&
+        (section as PersistedFormSection).blocks.every(hasBlockShape) &&
+        hasNavigationRule((section as PersistedFormSection).afterSection),
     );
 
   return Boolean(
@@ -880,7 +844,7 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
       candidate.translations &&
       typeof candidate.translations === "object" &&
       Object.values(candidate.translations).every(hasStringMap) &&
-      Array.isArray(candidate.blocks) &&
-      candidate.blocks.every(hasBlockShape),
+      Array.isArray(candidate.sections) &&
+      candidate.sections.every(hasSectionShape),
   );
 };

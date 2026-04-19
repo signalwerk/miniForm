@@ -22,7 +22,7 @@ export function FlowRuleFields({
   onChange,
 }: FlowRuleFieldsProps) {
   const navigationOptions =
-    targets.length === 0 ? NAVIGATION_OPTIONS.filter((option) => option.value !== "block") : NAVIGATION_OPTIONS;
+    targets.length === 0 ? NAVIGATION_OPTIONS.filter((option) => option.value !== "section") : NAVIGATION_OPTIONS;
 
   return (
     <div className="flow-rule">
@@ -32,17 +32,17 @@ export function FlowRuleFields({
         value={rule.mode}
         onChange={(event) => {
           const mode = event.target.value as NavigationRule["mode"];
-          if (mode === "block" && targets.length === 0) {
+          if (mode === "section" && targets.length === 0) {
             onChange({
               mode: "next",
-              targetBlockId: null,
+              targetSectionId: null,
             });
             return;
           }
 
           onChange({
             mode,
-            targetBlockId: mode === "block" ? targets[0]?.id ?? null : null,
+            targetSectionId: mode === "section" ? targets[0]?.id ?? null : null,
           });
         }}
       >
@@ -53,19 +53,19 @@ export function FlowRuleFields({
         ))}
       </select>
 
-      {rule.mode === "block" ? (
+      {rule.mode === "section" ? (
         <select
           id={`${idPrefix}-target`}
-          value={rule.targetBlockId ?? ""}
+          value={rule.targetSectionId ?? ""}
           onChange={(event) =>
             onChange({
-              mode: "block",
-              targetBlockId: event.target.value || null,
+              mode: "section",
+              targetSectionId: event.target.value || null,
             })
           }
         >
           {targets.length === 0 ? (
-            <option value="">No block available</option>
+            <option value="">No section available</option>
           ) : (
             targets.map((target) => (
               <option key={target.id} value={target.id}>

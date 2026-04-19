@@ -1,16 +1,12 @@
-export type QuestionType =
-  | "content"
-  | "text"
-  | "single_choice"
-  | "multiple_choice";
+export type BlockType = "content" | "text" | "single_choice" | "multiple_choice";
 
-export type NavigationMode = "next" | "block" | "submit";
-export type TranslationKey = string;
+export type NavigationMode = "next" | "section" | "submit";
+export type TranslationId = string;
 export type LanguageId = string;
 
 export interface NavigationRule {
   mode: NavigationMode;
-  targetBlockId: string | null;
+  targetSectionId: string | null;
 }
 
 export interface FormLanguage {
@@ -23,124 +19,120 @@ export interface FormI18nSettings {
   defaultLanguage: LanguageId;
 }
 
-export type FormTranslations = Record<TranslationKey, Record<LanguageId, string>>;
+export type FormTranslations = Record<TranslationId, Record<LanguageId, string>>;
 
 export interface FormOption {
   id: string;
-  label: TranslationKey;
+  label: TranslationId;
   navigation: NavigationRule;
 }
 
-interface CollapsibleQuestion {
+interface CollapsibleBlock {
   id: string;
   isCollapsed: boolean;
 }
 
-export interface ContentQuestion extends CollapsibleQuestion {
+export interface ContentBlock extends CollapsibleBlock {
   type: "content";
-  content: TranslationKey;
+  content: TranslationId;
 }
 
-interface PromptQuestion extends CollapsibleQuestion {
-  title: TranslationKey;
-  description: TranslationKey;
+interface PromptBlock extends CollapsibleBlock {
+  title: TranslationId;
+  description: TranslationId;
 }
 
-export interface TextQuestion extends PromptQuestion {
+export interface TextBlock extends PromptBlock {
   type: "text";
   required: boolean;
   multilineText: boolean;
-  placeholder: TranslationKey;
+  placeholder: TranslationId;
 }
 
-interface BaseChoiceQuestion extends PromptQuestion {
+interface BaseChoiceBlock extends PromptBlock {
   required: boolean;
   options: FormOption[];
   allowOther: boolean;
-  otherOptionLabel: TranslationKey | null;
+  otherOptionLabel: TranslationId | null;
 }
 
-export interface SingleChoiceQuestion extends BaseChoiceQuestion {
+export interface SingleChoiceBlock extends BaseChoiceBlock {
   type: "single_choice";
   showAsDropdown: boolean;
   routeByAnswer: boolean;
   otherOptionNavigation: NavigationRule;
 }
 
-export interface MultipleChoiceQuestion extends BaseChoiceQuestion {
+export interface MultipleChoiceBlock extends BaseChoiceBlock {
   type: "multiple_choice";
 }
 
-export type ChoiceQuestion = SingleChoiceQuestion | MultipleChoiceQuestion;
+export type ChoiceBlock = SingleChoiceBlock | MultipleChoiceBlock;
 
-export type FormQuestion =
-  | ContentQuestion
-  | TextQuestion
-  | SingleChoiceQuestion
-  | MultipleChoiceQuestion;
+export type FormBlock = ContentBlock | TextBlock | SingleChoiceBlock | MultipleChoiceBlock;
 
-export interface FormBlock {
+export interface FormSection {
   id: string;
-  questions: FormQuestion[];
-  afterBlock: NavigationRule;
+  blocks: FormBlock[];
+  afterSection: NavigationRule;
   isCollapsed: boolean;
 }
 
 export interface PersistedFormOption {
   id: string;
-  label: TranslationKey;
+  label: TranslationId;
   navigation?: NavigationRule;
 }
 
-interface PersistedQuestionBase {
+interface PersistedBlockBase {
   id: string;
 }
 
-export interface PersistedContentQuestion extends PersistedQuestionBase {
+export interface PersistedContentBlock extends PersistedBlockBase {
   type: "content";
-  content: TranslationKey;
+  content: TranslationId;
 }
 
-interface PersistedPromptQuestion extends PersistedQuestionBase {
-  title: TranslationKey;
-  description: TranslationKey;
+interface PersistedPromptBlock extends PersistedBlockBase {
+  title: TranslationId;
+  description: TranslationId;
 }
 
-export interface PersistedTextQuestion extends PersistedPromptQuestion {
+export interface PersistedTextBlock extends PersistedPromptBlock {
   type: "text";
   required: boolean;
   multilineText: boolean;
-  placeholder: TranslationKey;
+  placeholder: TranslationId;
 }
 
-interface BasePersistedChoiceQuestion extends PersistedPromptQuestion {
+interface BasePersistedChoiceBlock extends PersistedPromptBlock {
   required: boolean;
   options: PersistedFormOption[];
   allowOther: boolean;
-  otherOptionLabel?: TranslationKey;
+  otherOptionLabel?: TranslationId;
 }
 
-export interface PersistedSingleChoiceQuestion extends BasePersistedChoiceQuestion {
+export interface PersistedSingleChoiceBlock extends BasePersistedChoiceBlock {
   type: "single_choice";
   showAsDropdown: boolean;
   routeByAnswer: boolean;
   otherOptionNavigation?: NavigationRule;
 }
 
-export interface PersistedMultipleChoiceQuestion extends BasePersistedChoiceQuestion {
+export interface PersistedMultipleChoiceBlock extends BasePersistedChoiceBlock {
   type: "multiple_choice";
 }
 
-export type PersistedFormQuestion =
-  | PersistedContentQuestion
-  | PersistedTextQuestion
-  | PersistedSingleChoiceQuestion
-  | PersistedMultipleChoiceQuestion;
+export type PersistedFormBlock =
+  | PersistedContentBlock
+  | PersistedTextBlock
+  | PersistedSingleChoiceBlock
+  | PersistedMultipleChoiceBlock;
 
-export interface PersistedFormBlock {
+export interface PersistedFormSection {
   id: string;
-  questions: PersistedFormQuestion[];
-  afterBlock: NavigationRule;
+  blocks: PersistedFormBlock[];
+  afterSection: NavigationRule;
 }
 
 export interface FormDefinition {
@@ -148,7 +140,7 @@ export interface FormDefinition {
   description: string;
   i18n: FormI18nSettings;
   translations: FormTranslations;
-  blocks: FormBlock[];
+  sections: FormSection[];
 }
 
 export interface PersistedFormDefinition {
@@ -156,7 +148,7 @@ export interface PersistedFormDefinition {
   description: string;
   i18n: FormI18nSettings;
   translations: FormTranslations;
-  blocks: PersistedFormBlock[];
+  sections: PersistedFormSection[];
 }
 
 export interface FormSummary {

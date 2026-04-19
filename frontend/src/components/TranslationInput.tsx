@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { getTranslationValue } from "../lib/form-model";
-import type { FormLanguage, FormTranslations, TranslationKey } from "../lib/types";
+import type { FormLanguage, FormTranslations, TranslationId } from "../lib/types";
 
 interface TranslationInputProps {
   id: string;
   label: string;
-  translationKey: TranslationKey | null;
+  translationId: TranslationId | null;
   translations: FormTranslations;
   languages: FormLanguage[];
   defaultLanguage: string;
@@ -14,13 +14,13 @@ interface TranslationInputProps {
   rows?: number;
   variant?: "default" | "option";
   showMissingBadge?: boolean;
-  onChange: (translationKey: TranslationKey, languageId: string, value: string) => void;
+  onChange: (translationId: TranslationId, languageId: string, value: string) => void;
 }
 
 export function TranslationInput({
   id,
   label,
-  translationKey,
+  translationId,
   translations,
   languages,
   defaultLanguage,
@@ -39,11 +39,11 @@ export function TranslationInput({
     }
   }, [activeLanguageId, defaultLanguage, languages]);
 
-  if (!translationKey) {
+  if (!translationId) {
     return null;
   }
 
-  const value = getTranslationValue(translations, translationKey, activeLanguageId);
+  const value = getTranslationValue(translations, translationId, activeLanguageId);
   const isMissing = value.trim().length === 0;
 
   return (
@@ -70,7 +70,7 @@ export function TranslationInput({
               className="translation-input__field"
               value={value}
               placeholder={placeholder}
-              onChange={(event) => onChange(translationKey, activeLanguageId, event.target.value)}
+              onChange={(event) => onChange(translationId, activeLanguageId, event.target.value)}
             />
           ) : (
             <input
@@ -79,7 +79,7 @@ export function TranslationInput({
               className="translation-input__field"
               value={value}
               placeholder={placeholder}
-              onChange={(event) => onChange(translationKey, activeLanguageId, event.target.value)}
+              onChange={(event) => onChange(translationId, activeLanguageId, event.target.value)}
             />
           )}
         </div>

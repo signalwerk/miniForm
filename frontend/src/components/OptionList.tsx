@@ -12,31 +12,31 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { getDropIndicator } from "../lib/dnd";
-import { getTranslationValue, isSingleChoiceQuestion } from "../lib/form-model";
+import { getTranslationValue, isSingleChoiceBlock } from "../lib/form-model";
 import type {
-  ChoiceQuestion,
+  ChoiceBlock,
   FormLanguage,
   FormTranslations,
   NavigationRule,
-  TranslationKey,
+  TranslationId,
 } from "../lib/types";
 import { DragHandle } from "./DragHandle";
 import { FlowRuleFields } from "./FlowRuleFields";
 import { TranslationInput } from "./TranslationInput";
 
-interface BlockTarget {
+interface SectionTarget {
   id: string;
   label: string;
 }
 
 interface OptionListProps {
-  question: ChoiceQuestion;
-  blockTargets: BlockTarget[];
+  block: ChoiceBlock;
+  sectionTargets: SectionTarget[];
   languages: FormLanguage[];
   defaultLanguage: string;
   translations: FormTranslations;
   onAddOption: () => void;
-  onUpdateTranslation: (translationKey: TranslationKey, languageId: string, value: string) => void;
+  onUpdateTranslation: (translationId: TranslationId, languageId: string, value: string) => void;
   onToggleOther: (value: boolean) => void;
   onDeleteOption: (optionId: string) => void;
   onMoveOption: (fromIndex: number, toIndex: number) => void;
@@ -46,17 +46,17 @@ interface OptionListProps {
 
 interface OptionItemProps {
   optionId: string;
-  label: TranslationKey;
+  label: TranslationId;
   index: number;
   canDelete: boolean;
-  questionType: ChoiceQuestion["type"];
+  blockType: ChoiceBlock["type"];
   navigation: NavigationRule;
-  blockTargets: BlockTarget[];
+  sectionTargets: SectionTarget[];
   languages: FormLanguage[];
   defaultLanguage: string;
   translations: FormTranslations;
   dropIndicator: "before" | "after" | null;
-  onUpdateTranslation: (translationKey: TranslationKey, languageId: string, value: string) => void;
+  onUpdateTranslation: (translationId: TranslationId, languageId: string, value: string) => void;
   onDeleteOption: (optionId: string) => void;
   onSetOptionRule: (optionId: string, rule: NavigationRule) => void;
 }
@@ -66,9 +66,9 @@ function OptionItem({
   label,
   index,
   canDelete,
-  questionType,
+  blockType,
   navigation,
-  blockTargets,
+  sectionTargets,
   languages,
   defaultLanguage,
   translations,
@@ -116,7 +116,7 @@ function OptionItem({
             <TranslationInput
               id={`option-${optionId}`}
               label={`Option ${index + 1}`}
-              translationKey={label}
+              translationId={label}
               translations={translations}
               languages={languages}
               defaultLanguage={defaultLanguage}
@@ -127,13 +127,13 @@ function OptionItem({
           </div>
         </div>
 
-        {questionType === "single_choice" ? (
+        {blockType === "single_choice" ? (
           <div className="option-list__route">
             <FlowRuleFields
               idPrefix={`option-rule-${optionId}`}
               label="After answer"
               rule={navigation}
-              targets={blockTargets}
+              targets={sectionTargets}
               onChange={(rule) => onSetOptionRule(optionId, rule)}
             />
           </div>
@@ -155,8 +155,8 @@ function OptionItem({
 }
 
 export function OptionList({
-  question,
-  blockTargets,
+  block,
+  sectionTargets,
   languages,
   defaultLanguage,
   translations,
@@ -168,7 +168,7 @@ export function OptionList({
   onSetOptionRule,
   onSetOtherOptionRule,
 }: OptionListProps) {
-  const optionIds = useMemo(() => question.options.map((option) => option.id), [question.options]);
+  const optionIds = useMemo(() => block.options.map((option) => option.id), [block.options]);
   const [activeOptionId, setActiveOptionId] = useState<UniqueIdentifier | null>(null);
   const [overOptionId, setOverOptionId] = useState<UniqueIdentifier | null>(null);
   const sensors = useSensors(
@@ -178,7 +178,7 @@ export function OptionList({
       },
     }),
   );
-  const otherLabel = getTranslationValue(translations, question.otherOptionLabel, defaultLanguage);
+  const otherLabel = getTranslationValue(translations, block.otherOptionLabel, defaultLanguage);
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setActiveOptionId(null);
@@ -212,16 +212,16 @@ export function OptionList({
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={optionIds} strategy={verticalListSortingStrategy}>
-          {question.options.map((option, index) => (
+          {block.options.map((option, index) => (
             <OptionItem
               key={option.id}
               optionId={option.id}
               label={option.label}
               index={index}
-              canDelete={question.options.length > 1}
-              questionType={isSingleChoiceQuestion(question) && question.routeByAnswer ? question.type : "multiple_choice"}
+              canDelete={block.options.length > 1}
+              blockType={isSingleChoiceBlock(block) && block.routeByAnswer ? block.type : "multiple_choice"}
               navigation={option.navigation}
-              blockTargets={blockTargets}
+              sectionTargets={sectionTargets}
               languages={languages}
               defaultLanguage={defaultLanguage}
               translations={translations}
@@ -234,33 +234,33 @@ export function OptionList({
         </SortableContext>
       </DndContext>
 
-      {question.options.length === 0 ? (
+      {block.options.length === 0 ? (
         <div className="empty-state empty-state--subtle">
           <p>Add options to let respondents choose an answer.</p>
         </div>
       ) : null}
 
-      {!isSingleChoiceQuestion(question) || !question.showAsDropdown ? (
+      {!isSingleChoiceBlock(block) || !block.showAsDropdown ? (
         <label className="checkbox option-list__other-toggle">
           <input
             type="checkbox"
-            checked={question.allowOther}
+            checked={block.allowOther}
             onChange={(event) => onToggleOther(event.target.checked)}
           />
           <span>Show “Other” option</span>
         </label>
       ) : null}
 
-      {question.allowOther && question.otherOptionLabel ? (
+      {block.allowOther && block.otherOptionLabel ? (
         <article className="option-list__item option-list__item--other">
           <div className="option-list__row">
             <div className="card-title">
               <div className="option-list__bullet" aria-hidden="true" />
               <div className="option-list__main">
                 <TranslationInput
-                  id={`other-option-${question.id}`}
+                  id={`other-option-${block.id}`}
                   label="Other label"
-                  translationKey={question.otherOptionLabel}
+                  translationId={block.otherOptionLabel}
                   translations={translations}
                   languages={languages}
                   defaultLanguage={defaultLanguage}
@@ -271,13 +271,13 @@ export function OptionList({
               </div>
             </div>
 
-            {isSingleChoiceQuestion(question) && question.routeByAnswer ? (
+            {isSingleChoiceBlock(block) && block.routeByAnswer ? (
               <div className="option-list__route">
                 <FlowRuleFields
-                  idPrefix={`other-option-rule-${question.id}`}
+                  idPrefix={`other-option-rule-${block.id}`}
                   label="After answer"
-                  rule={question.otherOptionNavigation}
-                  targets={blockTargets}
+                  rule={block.otherOptionNavigation}
+                  targets={sectionTargets}
                   onChange={onSetOtherOptionRule}
                 />
               </div>

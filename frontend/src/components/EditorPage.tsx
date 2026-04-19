@@ -11,12 +11,12 @@ import {
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from "react-router-dom";
-import { BlockCard } from "./BlockCard";
+import { SectionCard } from "./BlockCard";
 import { createForm, validateForm, validateI18nSettings } from "../lib/form-model";
 import { formReducer, getInitialFormState } from "../lib/form-reducer";
 import { getDropIndicator } from "../lib/dnd";
 import { createBlankFormRecord, getForm, saveForm } from "../lib/pocketbase";
-import type { FormDefinition, NavigationRule, QuestionType, TranslationKey } from "../lib/types";
+import type { BlockType, FormDefinition, NavigationRule, TranslationId } from "../lib/types";
 
 const getErrorMessage = (error: unknown) => {
   if (error && typeof error === "object" && "message" in error) {
@@ -37,8 +37,8 @@ export function EditorPage() {
   const [saveState, setSaveState] = useState<"idle" | "dirty" | "saving" | "saved" | "error">("idle");
   const [saveMessage, setSaveMessage] = useState("Autosave to PocketBase is active.");
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
-  const [activeBlockId, setActiveBlockId] = useState<UniqueIdentifier | null>(null);
-  const [overBlockId, setOverBlockId] = useState<UniqueIdentifier | null>(null);
+  const [activeSectionId, setActiveSectionId] = useState<UniqueIdentifier | null>(null);
+  const [overSectionId, setOverSectionId] = useState<UniqueIdentifier | null>(null);
   const saveTimeoutRef = useRef<number | null>(null);
   const latestFormRef = useRef<FormDefinition>(form);
   const latestSnapshotRef = useRef(JSON.stringify(form));
@@ -55,14 +55,14 @@ export function EditorPage() {
     }),
   );
 
-  const blockIds = useMemo(() => form.blocks.map((block) => block.id), [form.blocks]);
-  const blockTargets = useMemo(
+  const sectionIds = useMemo(() => form.sections.map((section) => section.id), [form.sections]);
+  const sectionTargets = useMemo(
     () =>
-      form.blocks.map((block, index) => ({
-        id: block.id,
-        label: `Block ${index + 1}`,
+      form.sections.map((section, index) => ({
+        id: section.id,
+        label: `Section ${index + 1}`,
       })),
-    [form.blocks],
+    [form.sections],
   );
 
   const i18nIssues = useMemo(() => validateI18nSettings(form), [form]);
@@ -287,19 +287,19 @@ export function EditorPage() {
     }
   };
 
-  const handleBlockDragEnd = ({ active, over }: DragEndEvent) => {
-    setActiveBlockId(null);
-    setOverBlockId(null);
+  const handleSectionDragEnd = ({ active, over }: DragEndEvent) => {
+    setActiveSectionId(null);
+    setOverSectionId(null);
 
     if (!over || active.id === over.id) {
       return;
     }
 
-    const fromIndex = blockIds.indexOf(String(active.id));
-    const toIndex = blockIds.indexOf(String(over.id));
+    const fromIndex = sectionIds.indexOf(String(active.id));
+    const toIndex = sectionIds.indexOf(String(over.id));
 
     dispatch({
-      type: "move_block",
+      type: "move_section",
       fromIndex,
       toIndex,
     });
@@ -347,7 +347,7 @@ export function EditorPage() {
         <section className="panel">
           <p className="eyebrow">Step 3</p>
           <h2>Form editor</h2>
-          <p>Edit one form at a time. Question and option text now use per-field language switching.</p>
+          <p>Edit one form at a time. Block and option text use per-field language switching.</p>
           <div className="button-group">
             <Link className="app-nav__link" to="/forms">
               Back to forms
@@ -417,7 +417,7 @@ export function EditorPage() {
               id="form-description"
               rows={4}
               value={form.description}
-              placeholder="Introduce the form and explain how blocks should be used."
+              placeholder="Introduce the form and explain how sections should be used."
               onChange={(event) =>
                 dispatch({
                   type: "set_form_field",
@@ -514,156 +514,156 @@ export function EditorPage() {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          onDragStart={({ active }: DragStartEvent) => setActiveBlockId(active.id)}
-          onDragOver={({ over }) => setOverBlockId(over?.id ?? null)}
+          onDragStart={({ active }: DragStartEvent) => setActiveSectionId(active.id)}
+          onDragOver={({ over }) => setOverSectionId(over?.id ?? null)}
           onDragCancel={() => {
-            setActiveBlockId(null);
-            setOverBlockId(null);
+            setActiveSectionId(null);
+            setOverSectionId(null);
           }}
-          onDragEnd={handleBlockDragEnd}
+          onDragEnd={handleSectionDragEnd}
         >
-          <SortableContext items={blockIds} strategy={verticalListSortingStrategy}>
+          <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
             <div className="block-list">
-              {form.blocks.length === 0 ? (
+              {form.sections.length === 0 ? (
                 <div className="empty-state">
-                  <p className="eyebrow">No blocks yet</p>
-                  <p>Add a block when you want to start structuring the form flow.</p>
+                  <p className="eyebrow">No sections yet</p>
+                  <p>Add a section when you want to start structuring the form flow.</p>
                 </div>
               ) : (
-                form.blocks.map((block, blockIndex) => (
-                  <BlockCard
-                    key={block.id}
-                    block={block}
-                    index={blockIndex}
-                    blockTargets={blockTargets}
-                    dropIndicator={getDropIndicator(blockIds, block.id, activeBlockId, overBlockId)}
+                form.sections.map((section, sectionIndex) => (
+                  <SectionCard
+                    key={section.id}
+                    section={section}
+                    index={sectionIndex}
+                    sectionTargets={sectionTargets}
+                    dropIndicator={getDropIndicator(sectionIds, section.id, activeSectionId, overSectionId)}
                     languages={form.i18n.languages}
                     defaultLanguage={form.i18n.defaultLanguage}
                     translations={form.translations}
-                    onDeleteBlock={() =>
+                    onDeleteSection={() =>
                       dispatch({
-                        type: "delete_block",
-                        blockId: block.id,
+                        type: "delete_section",
+                        sectionId: section.id,
                       })
                     }
-                    onDuplicateBlock={() =>
+                    onDuplicateSection={() =>
                       dispatch({
-                        type: "duplicate_block",
-                        blockId: block.id,
+                        type: "duplicate_section",
+                        sectionId: section.id,
                       })
                     }
-                    onToggleBlock={() =>
+                    onToggleSection={() =>
                       dispatch({
-                        type: "toggle_block",
-                        blockId: block.id,
+                        type: "toggle_section",
+                        sectionId: section.id,
                       })
                     }
-                    onQuestionMove={(fromIndex, toIndex) =>
+                    onBlockMove={(fromIndex, toIndex) =>
                       dispatch({
-                        type: "move_question",
-                        blockId: block.id,
+                        type: "move_block",
+                        sectionId: section.id,
                         fromIndex,
                         toIndex,
                       })
                     }
-                    onAddQuestion={(questionType?: QuestionType) =>
+                    onAddBlock={(blockType?: BlockType) =>
                       dispatch({
-                        type: "add_question",
-                        blockId: block.id,
-                        questionType,
+                        type: "add_block",
+                        sectionId: section.id,
+                        blockType,
                       })
                     }
-                    onUpdateTranslation={(translationKey: TranslationKey, languageId: string, value: string) =>
+                    onUpdateTranslation={(translationId: TranslationId, languageId: string, value: string) =>
                       dispatch({
                         type: "update_translation",
-                        translationKey,
+                        translationId,
                         languageId,
                         value,
                       })
                     }
-                    onQuestionTypeChange={(questionId, questionType) =>
+                    onBlockTypeChange={(blockId, blockType) =>
                       dispatch({
-                        type: "set_question_type",
-                        blockId: block.id,
-                        questionId,
-                        questionType,
+                        type: "set_block_type",
+                        sectionId: section.id,
+                        blockId,
+                        blockType,
                       })
                     }
-                    onQuestionToggle={(questionId, field, value) =>
+                    onBlockToggle={(blockId, field, value) =>
                       dispatch({
-                        type: "set_question_toggle",
-                        blockId: block.id,
-                        questionId,
+                        type: "set_block_toggle",
+                        sectionId: section.id,
+                        blockId,
                         field,
                         value,
                       })
                     }
-                    onDeleteQuestion={(questionId) =>
+                    onDeleteBlock={(blockId) =>
                       dispatch({
-                        type: "delete_question",
-                        blockId: block.id,
-                        questionId,
+                        type: "delete_block",
+                        sectionId: section.id,
+                        blockId,
                       })
                     }
-                    onDuplicateQuestion={(questionId) =>
+                    onDuplicateBlock={(blockId) =>
                       dispatch({
-                        type: "duplicate_question",
-                        blockId: block.id,
-                        questionId,
+                        type: "duplicate_block",
+                        sectionId: section.id,
+                        blockId,
                       })
                     }
-                    onToggleQuestion={(questionId) =>
+                    onToggleBlock={(blockId) =>
                       dispatch({
-                        type: "toggle_question",
-                        blockId: block.id,
-                        questionId,
+                        type: "toggle_block",
+                        sectionId: section.id,
+                        blockId,
                       })
                     }
-                    onSetBlockRule={(rule: NavigationRule) =>
+                    onSetSectionRule={(rule: NavigationRule) =>
                       dispatch({
-                        type: "set_block_rule",
-                        blockId: block.id,
+                        type: "set_section_rule",
+                        sectionId: section.id,
                         rule,
                       })
                     }
-                    onAddOption={(questionId) =>
+                    onAddOption={(blockId) =>
                       dispatch({
                         type: "add_option",
-                        blockId: block.id,
-                        questionId,
+                        sectionId: section.id,
+                        blockId,
                       })
                     }
-                    onDeleteOption={(questionId, optionId) =>
+                    onDeleteOption={(blockId, optionId) =>
                       dispatch({
                         type: "delete_option",
-                        blockId: block.id,
-                        questionId,
+                        sectionId: section.id,
+                        blockId,
                         optionId,
                       })
                     }
-                    onMoveOption={(questionId, fromIndex, toIndex) =>
+                    onMoveOption={(blockId, fromIndex, toIndex) =>
                       dispatch({
                         type: "move_option",
-                        blockId: block.id,
-                        questionId,
+                        sectionId: section.id,
+                        blockId,
                         fromIndex,
                         toIndex,
                       })
                     }
-                    onSetOptionRule={(questionId, optionId, rule) =>
+                    onSetOptionRule={(blockId, optionId, rule) =>
                       dispatch({
                         type: "set_option_rule",
-                        blockId: block.id,
-                        questionId,
+                        sectionId: section.id,
+                        blockId,
                         optionId,
                         rule,
                       })
                     }
-                    onSetOtherOptionRule={(questionId, rule) =>
+                    onSetOtherOptionRule={(blockId, rule) =>
                       dispatch({
                         type: "set_other_option_rule",
-                        blockId: block.id,
-                        questionId,
+                        sectionId: section.id,
+                        blockId,
                         rule,
                       })
                     }
@@ -679,11 +679,11 @@ export function EditorPage() {
           className="button button--secondary"
           onClick={() =>
             dispatch({
-              type: "add_block",
+              type: "add_section",
             })
           }
         >
-          Add block
+          Add section
         </button>
       </section>
     </main>

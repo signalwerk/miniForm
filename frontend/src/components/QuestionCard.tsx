@@ -1,42 +1,42 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  QUESTION_TYPE_OPTIONS,
+  BLOCK_TYPE_OPTIONS,
   getTranslationValue,
-  isChoiceQuestion,
-  isContentQuestion,
-  isSingleChoiceQuestion,
-  isTextQuestion,
+  isChoiceBlock,
+  isContentBlock,
+  isSingleChoiceBlock,
+  isTextBlock,
 } from "../lib/form-model";
 import type { DropIndicatorPosition } from "../lib/dnd";
 import type {
+  BlockType,
+  FormBlock,
   FormLanguage,
-  FormQuestion,
   FormTranslations,
   NavigationRule,
-  QuestionType,
-  TranslationKey,
+  TranslationId,
 } from "../lib/types";
 import { DragHandle } from "./DragHandle";
 import { OptionList } from "./OptionList";
 import { TranslationInput } from "./TranslationInput";
 
-interface BlockTarget {
+interface SectionTarget {
   id: string;
   label: string;
 }
 
-interface QuestionCardProps {
-  blockId: string;
-  question: FormQuestion;
+interface BlockCardProps {
+  sectionId: string;
+  block: FormBlock;
   index: number;
-  blockTargets: BlockTarget[];
+  sectionTargets: SectionTarget[];
   dropIndicator: DropIndicatorPosition;
   languages: FormLanguage[];
   defaultLanguage: string;
   translations: FormTranslations;
-  onUpdateTranslation: (translationKey: TranslationKey, languageId: string, value: string) => void;
-  onTypeChange: (value: QuestionType) => void;
+  onUpdateTranslation: (translationId: TranslationId, languageId: string, value: string) => void;
+  onTypeChange: (value: BlockType) => void;
   onToggle: (
     field: "required" | "multilineText" | "showAsDropdown" | "allowOther" | "routeByAnswer",
     value: boolean,
@@ -51,11 +51,11 @@ interface QuestionCardProps {
   onSetOtherOptionRule: (rule: NavigationRule) => void;
 }
 
-export function QuestionCard({
-  blockId,
-  question,
+export function BlockCard({
+  sectionId,
+  block,
   index,
-  blockTargets,
+  sectionTargets,
   dropIndicator,
   languages,
   defaultLanguage,
@@ -71,7 +71,7 @@ export function QuestionCard({
   onMoveOption,
   onSetOptionRule,
   onSetOtherOptionRule,
-}: QuestionCardProps) {
+}: BlockCardProps) {
   const {
     attributes,
     listeners,
@@ -81,16 +81,16 @@ export function QuestionCard({
     transition,
     isDragging,
   } = useSortable({
-    id: question.id,
+    id: block.id,
   });
 
-  const isContent = isContentQuestion(question);
-  const canRouteByAnswer = isSingleChoiceQuestion(question);
-  const isText = isTextQuestion(question);
-  const isSingleChoice = isSingleChoiceQuestion(question);
-  const questionTitle = getTranslationValue(
+  const isContent = isContentBlock(block);
+  const canRouteByAnswer = isSingleChoiceBlock(block);
+  const isText = isTextBlock(block);
+  const isSingleChoice = isSingleChoiceBlock(block);
+  const blockTitle = getTranslationValue(
     translations,
-    isContent ? question.content : question.title,
+    isContent ? block.content : block.title,
     defaultLanguage,
   );
 
@@ -115,23 +115,23 @@ export function QuestionCard({
             attributes={attributes}
             listeners={listeners}
             setActivatorNodeRef={setActivatorNodeRef}
-            label={`Reorder question ${index + 1}`}
+            label={`Reorder block ${index + 1}`}
           />
           <div>
-            <p className="eyebrow">Question {index + 1}</p>
-            <h3>{questionTitle || (isContent ? "Untitled content" : "Untitled question")}</h3>
+            <p className="eyebrow">Block {index + 1}</p>
+            <h3>{blockTitle || (isContent ? "Untitled content" : "Untitled block")}</h3>
           </div>
         </div>
 
         <div className="question-card__controls">
           <div className="question-card__type">
-            <label htmlFor={`question-type-${question.id}`}>Type</label>
+            <label htmlFor={`block-type-${block.id}`}>Type</label>
             <select
-              id={`question-type-${question.id}`}
-              value={question.type}
-              onChange={(event) => onTypeChange(event.target.value as QuestionType)}
+              id={`block-type-${block.id}`}
+              value={block.type}
+              onChange={(event) => onTypeChange(event.target.value as BlockType)}
             >
-              {QUESTION_TYPE_OPTIONS.map((option) => (
+              {BLOCK_TYPE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -144,7 +144,7 @@ export function QuestionCard({
               Duplicate
             </button>
             <button type="button" className="button button--ghost" onClick={onCollapse}>
-              {question.isCollapsed ? "Expand" : "Collapse"}
+              {block.isCollapsed ? "Expand" : "Collapse"}
             </button>
             <button type="button" className="button button--ghost button--danger" onClick={onDelete}>
               Delete
@@ -153,13 +153,13 @@ export function QuestionCard({
         </div>
       </header>
 
-      {!question.isCollapsed ? (
+      {!block.isCollapsed ? (
         <div className="question-card__body">
           {isContent ? (
             <TranslationInput
-              id={`question-content-${question.id}`}
+              id={`block-content-${block.id}`}
               label="Content"
-              translationKey={question.content}
+              translationId={block.content}
               translations={translations}
               languages={languages}
               defaultLanguage={defaultLanguage}
@@ -171,20 +171,20 @@ export function QuestionCard({
           ) : (
             <>
               <TranslationInput
-                id={`question-title-${question.id}`}
+                id={`block-title-${block.id}`}
                 label="Prompt"
-                translationKey={question.title}
+                translationId={block.title}
                 translations={translations}
                 languages={languages}
                 defaultLanguage={defaultLanguage}
-                placeholder="Ask your question"
+                placeholder="Add the block prompt"
                 onChange={onUpdateTranslation}
               />
 
               <TranslationInput
-                id={`question-description-${question.id}`}
+                id={`block-description-${block.id}`}
                 label="Description"
-                translationKey={question.description}
+                translationId={block.description}
                 translations={translations}
                 languages={languages}
                 defaultLanguage={defaultLanguage}
@@ -199,22 +199,24 @@ export function QuestionCard({
 
           {isText ? (
             <TranslationInput
-              id={`question-placeholder-${question.id}`}
+              id={`block-placeholder-${block.id}`}
               label="Placeholder"
-              translationKey={question.placeholder}
+              translationId={block.placeholder}
               translations={translations}
               languages={languages}
               defaultLanguage={defaultLanguage}
-              placeholder={question.multilineText ? "Placeholder text for the textarea" : "Placeholder text for the input"}
+              placeholder={
+                block.multilineText ? "Placeholder text for the textarea" : "Placeholder text for the input"
+              }
               showMissingBadge={false}
               onChange={onUpdateTranslation}
             />
           ) : null}
 
-          {isChoiceQuestion(question) ? (
+          {isChoiceBlock(block) ? (
             <OptionList
-              question={question}
-              blockTargets={blockTargets}
+              block={block}
+              sectionTargets={sectionTargets}
               languages={languages}
               defaultLanguage={defaultLanguage}
               translations={translations}
@@ -234,7 +236,7 @@ export function QuestionCard({
                 <label className="checkbox">
                   <input
                     type="checkbox"
-                    checked={question.required}
+                    checked={block.required}
                     onChange={(event) => onToggle("required", event.target.checked)}
                   />
                   <span>Required</span>
@@ -245,7 +247,7 @@ export function QuestionCard({
                 <label className="checkbox">
                   <input
                     type="checkbox"
-                    checked={question.multilineText}
+                    checked={block.multilineText}
                     onChange={(event) => onToggle("multilineText", event.target.checked)}
                   />
                   <span>Multiline text</span>
@@ -256,7 +258,7 @@ export function QuestionCard({
                 <label className="checkbox">
                   <input
                     type="checkbox"
-                    checked={question.showAsDropdown}
+                    checked={block.showAsDropdown}
                     onChange={(event) => onToggle("showAsDropdown", event.target.checked)}
                   />
                   <span>Show as dropdown</span>
@@ -267,15 +269,15 @@ export function QuestionCard({
                 <label className="checkbox">
                   <input
                     type="checkbox"
-                    checked={question.routeByAnswer}
+                    checked={block.routeByAnswer}
                     onChange={(event) => onToggle("routeByAnswer", event.target.checked)}
                   />
-                  <span>Go to block based on answer</span>
+                  <span>Go to section based on answer</span>
                 </label>
               ) : null}
 
               <p className="helper-text">
-                Use the drag handle to reorder questions inside block {blockId.slice(0, 4).toUpperCase()}.
+                Use the drag handle to reorder blocks inside section {sectionId.slice(0, 4).toUpperCase()}.
               </p>
             </div>
           </footer>
