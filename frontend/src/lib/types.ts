@@ -138,6 +138,7 @@ export interface PersistedFormSection {
 export interface FormDefinition {
   title: string;
   description: string;
+  published: boolean;
   i18n: FormI18nSettings;
   translations: FormTranslations;
   sections: FormSection[];

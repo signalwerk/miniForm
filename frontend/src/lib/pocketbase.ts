@@ -28,6 +28,7 @@ interface FormRecord extends RecordModel {
   created?: string;
   title: string;
   description: string;
+  published?: boolean;
   data: PersistedFormDefinition;
   updated?: string;
 }
@@ -41,6 +42,7 @@ const buildFormPayload = (form: FormDefinition, ownerId: string) => ({
   owner: ownerId,
   title: getPersistedTitle(form),
   description: form.description,
+  published: form.published,
   data: serializeFormDefinition(form),
 });
 
@@ -95,7 +97,10 @@ export const getForm = async (recordId: string): Promise<FormDefinition> => {
     throw new Error("This form uses an older data shape and is no longer supported by the editor.");
   }
 
-  return hydrateFormDefinition(record.data);
+  return {
+    ...hydrateFormDefinition(record.data),
+    published: Boolean(record.published),
+  };
 };
 
 export const createBlankFormRecord = async (form: FormDefinition): Promise<SaveFormResponse> => {

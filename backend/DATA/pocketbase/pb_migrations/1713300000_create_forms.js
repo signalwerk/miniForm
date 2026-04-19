@@ -85,6 +85,15 @@ migrate(
         },
         {
           system: false,
+          id: "forms_publish",
+          name: "published",
+          type: "bool",
+          required: false,
+          presentable: false,
+          hidden: false,
+        },
+        {
+          system: false,
           id: "forms_data",
           name: "data",
           type: "json",

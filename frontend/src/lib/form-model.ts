@@ -173,6 +173,7 @@ export const createForm = (): FormDefinition => {
   return {
     title: "",
     description: "",
+    published: false,
     i18n: {
       languages: [{ id: defaultLanguage, label: "English" }],
       defaultLanguage,
@@ -501,6 +502,7 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
   const normalizedForm: FormDefinition = {
     title: form.title ?? "",
     description: form.description ?? "",
+    published: form.published ?? false,
     i18n: {
       languages: form.i18n.languages ?? [],
       defaultLanguage: form.i18n.defaultLanguage ?? "",
@@ -608,6 +610,7 @@ export const hydrateFormDefinition = (form: PersistedFormDefinition): FormDefini
   normalizeForm({
     title: form.title,
     description: form.description,
+    published: false,
     i18n: form.i18n,
     translations: form.translations,
     sections: form.sections.map((section) => ({

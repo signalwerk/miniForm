@@ -29,6 +29,7 @@ import type {
 export type FormAction =
   | { type: "replace"; payload: FormDefinition }
   | { type: "set_form_field"; field: "title" | "description"; value: string }
+  | { type: "set_form_published"; value: boolean }
   | { type: "add_language" }
   | { type: "update_language_label"; languageId: string; label: string }
   | { type: "delete_language"; languageId: string }
@@ -79,6 +80,12 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       return {
         ...state,
         [action.field]: action.value,
+      };
+
+    case "set_form_published":
+      return {
+        ...state,
+        published: action.value,
       };
 
     case "add_language": {

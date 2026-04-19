@@ -428,6 +428,24 @@ export function EditorPage() {
             />
           </div>
 
+          <div>
+            <label className="checkbox" htmlFor="form-published">
+              <input
+                id="form-published"
+                type="checkbox"
+                checked={form.published}
+                onChange={(event) =>
+                  dispatch({
+                    type: "set_form_published",
+                    value: event.target.checked,
+                  })
+                }
+              />
+              <span>Published</span>
+            </label>
+            <p className="helper-text">Published forms can be exposed in the viewer later on.</p>
+          </div>
+
           <section className="language-settings">
             <div className="panel__header">
               <div>
