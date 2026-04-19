@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tiny Markdown Parser</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        max-width: 900px;
+        margin: 40px auto;
+        padding: 0 16px;
+        line-height: 1.5;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 180px;
+        font: inherit;
+        padding: 12px;
+        box-sizing: border-box;
+      }
+
+      pre {
+        background: #f5f5f5;
+        padding: 12px;
+        overflow: auto;
+        white-space: pre-wrap;
+      }
+
+      .output {
+        border: 1px solid #ddd;
+        padding: 16px;
+        margin-top: 12px;
+      }
+
+      h2 {
+        margin-top: 32px;
+      }
+
+      code {
+        background: #f3f3f3;
+        padding: 0.1em 0.3em;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Tiny Markdown Parser</h1>
+
+    <textarea id="input">
+# Hello world
+
+Say **Hello** [World](https://example.com) in `code`! *Thanks!*
+
+## Second heading
+
+A second paragraph with **bold** and *emphasis*.
+
+### Small heading
+
+[OpenAI](https://openai.com)
+  </textarea
+    >
+
+    <h2>MDAST-like output</h2>
+    <pre id="ast"></pre>
+
+    <h2>Rendered HTML</h2>
+    <div id="rendered" class="output"></div>
+
+    <script>
+      function fromMarkdown(markdown) {
+        const lines = markdown.replace(/\r\n/g, "\n").split("\n");
+        const nodes = [];
+        let i = 0;
+
+        while (i < lines.length) {
+          const line = lines[i];
+
+          if (isBlank(line)) {
+            i++;
+            continue;
+          }
+
+          const heading = parseHeading(line);
+          if (heading) {
+            nodes.push(heading);
+            i++;
+            continue;
+          }
+
+          const paragraphLines = [];
+          while (
+            i < lines.length &&
+            !isBlank(lines[i]) &&
+            !parseHeading(lines[i])
+          ) {
+            paragraphLines.push(lines[i]);
+            i++;
+          }
+
+          const text = paragraphLines.join(" ");
+          nodes.push({
+            type: "paragraph",
+            children: parseInlines(text),
+          });
+        }
+
+        return nodes;
+      }
+
+      function isBlank(line) {
+        for (let i = 0; i < line.length; i++) {
+          if (line[i] !== " " && line[i] !== "\t") return false;
+        }
+        return true;
+      }
+
+      function parseHeading(line) {
+        let level = 0;
+        let i = 0;
+
+        while (i < line.length && line[i] === "#" && level < 3) {
+          level++;
+          i++;
+        }
+
+        if (level === 0) return null;
+        if (i >= line.length || line[i] !== " ") return null;
+
+        const text = line.slice(i + 1);
+
+        return {
+          type: "heading",
+          depth: level,
+          children: parseInlines(text),
+        };
+      }
+
+      function parseInlines(text) {
+        let i = 0;
+        const nodes = [];
+        let buffer = "";
+
+        function pushText() {
+          if (buffer) {
+            nodes.push({
+              type: "text",
+              value: buffer,
+            });
+            buffer = "";
+          }
+        }
+
+        while (i < text.length) {
+          // strong: **text**
+          if (text[i] === "*" && text[i + 1] === "*") {
+            const end = findClosingDoubleStar(text, i + 2);
+            if (end !== -1) {
+              pushText();
+              const content = text.slice(i + 2, end);
+              nodes.push({
+                type: "strong",
+                children: parseInlines(content),
+              });
+              i = end + 2;
+              continue;
+            }
+          }
+
+          // emphasis: *text*
+          if (text[i] === "*") {
+            const end = findClosingSingleStar(text, i + 1);
+            if (end !== -1) {
+              pushText();
+              const content = text.slice(i + 1, end);
+              nodes.push({
+                type: "emphasis",
+                children: parseInlines(content),
+              });
+              i = end + 1;
+              continue;
+            }
+          }
+
+          // inline code: `code`
+          if (text[i] === "`") {
+            const end = findChar(text, "`", i + 1);
+            if (end !== -1) {
+              pushText();
+              nodes.push({
+                type: "inlineCode",
+                value: text.slice(i + 1, end),
+              });
+              i = end + 1;
+              continue;
+            }
+          }
+
+          // link: [label](url)
+          if (text[i] === "[") {
+            const closeLabel = findChar(text, "]", i + 1);
+            if (closeLabel !== -1 && text[closeLabel + 1] === "(") {
+              const closeUrl = findChar(text, ")", closeLabel + 2);
+              if (closeUrl !== -1) {
+                pushText();
+                const label = text.slice(i + 1, closeLabel);
+                const url = text.slice(closeLabel + 2, closeUrl);
+                nodes.push({
+                  type: "link",
+                  url,
+                  children: parseInlines(label),
+                });
+                i = closeUrl + 1;
+                continue;
+              }
+            }
+          }
+
+          buffer += text[i];
+          i++;
+        }
+
+        pushText();
+        return nodes;
+      }
+
+      function findChar(text, char, start) {
+        for (let i = start; i < text.length; i++) {
+          if (text[i] === char) return i;
+        }
+        return -1;
+      }
+
+      function findClosingDoubleStar(text, start) {
+        for (let i = start; i < text.length - 1; i++) {
+          if (text[i] === "*" && text[i + 1] === "*") {
+            return i;
+          }
+        }
+        return -1;
+      }
+
+      function findClosingSingleStar(text, start) {
+        for (let i = start; i < text.length; i++) {
+          if (text[i] === "*") {
+            return i;
+          }
+        }
+        return -1;
+      }
+
+      function toHtml(nodes) {
+        let html = "";
+        for (const node of nodes) {
+          html += renderNode(node);
+        }
+        return html;
+      }
+
+      function renderNode(node) {
+        switch (node.type) {
+          case "text":
+            return escapeHtml(node.value);
+
+          case "strong":
+            return "<strong>" + renderChildren(node.children) + "</strong>";
+
+          case "emphasis":
+            return "<em>" + renderChildren(node.children) + "</em>";
+
+          case "inlineCode":
+            return "<code>" + escapeHtml(node.value) + "</code>";
+
+          case "link":
+            return (
+              '<a href="' +
+              escapeAttr(node.url) +
+              '">' +
+              renderChildren(node.children) +
+              "</a>"
+            );
+
+          case "paragraph":
+            return "<p>" + renderChildren(node.children) + "</p>";
+
+          case "heading":
+            return (
+              "<h" +
+              node.depth +
+              ">" +
+              renderChildren(node.children) +
+              "</h" +
+              node.depth +
+              ">"
+            );
+
+          default:
+            return "";
+        }
+      }
+
+      function renderChildren(children) {
+        let html = "";
+        for (const child of children) {
+          html += renderNode(child);
+        }
+        return html;
+      }
+
+      function escapeHtml(value) {
+        return value
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;");
+      }
+
+      function escapeAttr(value) {
+        return escapeHtml(value).replaceAll('"', "&quot;");
+      }
+
+      function update() {
+        const input = document.getElementById("input").value;
+        const tree = fromMarkdown(input);
+
+        document.getElementById("ast").textContent = JSON.stringify(
+          tree,
+          null,
+          2,
+        );
+        document.getElementById("rendered").innerHTML = toHtml(tree);
+      }
+
+      document.getElementById("input").addEventListener("input", update);
+      update();
+
+      // Example from your prompt:
+      const md =
+        "Say **Hello** [World](https://example.com) in `code`! *Thanks!*";
+      console.log(fromMarkdown(md));
+    </script>
+  </body>
+</html>
