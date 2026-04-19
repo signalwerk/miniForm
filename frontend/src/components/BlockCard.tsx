@@ -46,7 +46,7 @@ interface SectionCardProps {
   onBlockTypeChange: (blockId: string, blockType: BlockType) => void;
   onBlockToggle: (
     blockId: string,
-    field: "required" | "multilineText" | "showAsDropdown" | "allowOther" | "routeByAnswer",
+    field: "required" | "shortText" | "showAsDropdown" | "allowOther" | "routeByAnswer",
     value: boolean,
   ) => void;
   onDeleteBlock: (blockId: string) => void;

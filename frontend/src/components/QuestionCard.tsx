@@ -38,7 +38,7 @@ interface BlockCardProps {
   onUpdateTranslation: (translationId: TranslationId, languageId: string, value: string) => void;
   onTypeChange: (value: BlockType) => void;
   onToggle: (
-    field: "required" | "multilineText" | "showAsDropdown" | "allowOther" | "routeByAnswer",
+    field: "required" | "shortText" | "showAsDropdown" | "allowOther" | "routeByAnswer",
     value: boolean,
   ) => void;
   onDuplicate: () => void;
@@ -205,9 +205,7 @@ export function BlockCard({
               translations={translations}
               languages={languages}
               defaultLanguage={defaultLanguage}
-              placeholder={
-                block.multilineText ? "Placeholder text for the textarea" : "Placeholder text for the input"
-              }
+              placeholder={block.shortText ? "Placeholder text for the input" : "Placeholder text for the textarea"}
               showMissingBadge={false}
               onChange={onUpdateTranslation}
             />
@@ -247,10 +245,10 @@ export function BlockCard({
                 <label className="checkbox">
                   <input
                     type="checkbox"
-                    checked={block.multilineText}
-                    onChange={(event) => onToggle("multilineText", event.target.checked)}
+                    checked={block.shortText}
+                    onChange={(event) => onToggle("shortText", event.target.checked)}
                   />
-                  <span>Multiline text</span>
+                  <span>Short text</span>
                 </label>
               ) : null}
 

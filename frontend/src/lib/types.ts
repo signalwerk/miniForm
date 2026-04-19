@@ -45,7 +45,7 @@ interface PromptBlock extends CollapsibleBlock {
 export interface TextBlock extends PromptBlock {
   type: "text";
   required: boolean;
-  multilineText: boolean;
+  shortText: boolean;
   placeholder: TranslationId;
 }
 
@@ -101,7 +101,7 @@ interface PersistedPromptBlock extends PersistedBlockBase {
 export interface PersistedTextBlock extends PersistedPromptBlock {
   type: "text";
   required: boolean;
-  multilineText: boolean;
+  shortText: boolean;
   placeholder: TranslationId;
 }
 

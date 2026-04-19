@@ -114,7 +114,7 @@ export const createTextBlock = (): TextBlock => ({
   title: createTranslationId(),
   description: createTranslationId(),
   required: false,
-  multilineText: false,
+  shortText: false,
   placeholder: createTranslationId(),
   isCollapsed: false,
 });
@@ -232,7 +232,7 @@ export const duplicateBlock = (block: FormBlock, translations: FormTranslations)
               title: title!,
               description: description!,
               required: block.required,
-              multilineText: block.multilineText,
+              shortText: block.shortText,
               placeholder: placeholder!,
               isCollapsed: false,
             } satisfies TextBlock)
@@ -402,7 +402,7 @@ export const normalizeBlockType = (block: FormBlock, nextType: BlockType): FormB
         title: isContentBlock(block) ? promptTranslation : block.title,
         description: descriptionTranslation,
         required,
-        multilineText: isTextBlock(block) ? block.multilineText : false,
+        shortText: isTextBlock(block) ? block.shortText : false,
         placeholder: isTextBlock(block) ? block.placeholder : createTranslationId(),
         isCollapsed: block.isCollapsed,
       };
@@ -551,7 +551,7 @@ export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefi
               title: block.title,
               description: block.description,
               required: block.required,
-              multilineText: block.multilineText,
+              shortText: block.shortText,
               placeholder: block.placeholder,
             };
           case "single_choice":
@@ -784,7 +784,7 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
             typeof candidateBlock.description === "string" &&
             typeof candidateBlock.placeholder === "string" &&
             typeof candidateBlock.required === "boolean" &&
-            typeof candidateBlock.multilineText === "boolean"
+            typeof candidateBlock.shortText === "boolean"
           );
         case "single_choice":
           return (

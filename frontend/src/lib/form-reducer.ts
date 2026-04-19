@@ -46,7 +46,7 @@ export type FormAction =
       type: "set_block_toggle";
       sectionId: string;
       blockId: string;
-      field: "required" | "multilineText" | "showAsDropdown" | "allowOther" | "routeByAnswer";
+      field: "required" | "shortText" | "showAsDropdown" | "allowOther" | "routeByAnswer";
       value: boolean;
     }
   | { type: "delete_block"; sectionId: string; blockId: string }
@@ -339,14 +339,14 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
               };
             }
 
-            if (action.field === "multilineText") {
+            if (action.field === "shortText") {
               if (!isTextBlock(block)) {
                 return block;
               }
 
               return {
                 ...block,
-                multilineText: action.value,
+                shortText: action.value,
               };
             }
 
