@@ -97,10 +97,11 @@ export const getForm = async (recordId: string): Promise<FormDefinition> => {
     throw new Error("This form uses an older data shape and is no longer supported by the editor.");
   }
 
-  return {
-    ...hydrateFormDefinition(record.data),
+  return hydrateFormDefinition(record.data, {
+    title: record.title,
+    description: record.description,
     published: Boolean(record.published),
-  };
+  });
 };
 
 export const createBlankFormRecord = async (form: FormDefinition): Promise<SaveFormResponse> => {

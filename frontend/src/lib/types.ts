@@ -145,8 +145,6 @@ export interface FormDefinition {
 }
 
 export interface PersistedFormDefinition {
-  title: string;
-  description: string;
   i18n: FormI18nSettings;
   translations: FormTranslations;
   sections: PersistedFormSection[];

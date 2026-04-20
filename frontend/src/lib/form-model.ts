@@ -530,8 +530,6 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
 };
 
 export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefinition => ({
-  title: form.title,
-  description: form.description,
   i18n: form.i18n,
   translations: form.translations,
   sections: form.sections.map(
@@ -606,11 +604,14 @@ export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefi
   ),
 });
 
-export const hydrateFormDefinition = (form: PersistedFormDefinition): FormDefinition =>
+export const hydrateFormDefinition = (
+  form: PersistedFormDefinition,
+  metadata?: { title?: string; description?: string; published?: boolean },
+): FormDefinition =>
   normalizeForm({
-    title: form.title,
-    description: form.description,
-    published: false,
+    title: metadata?.title ?? "",
+    description: metadata?.description ?? "",
+    published: metadata?.published ?? false,
     i18n: form.i18n,
     translations: form.translations,
     sections: form.sections.map((section) => ({
@@ -831,9 +832,7 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
     );
 
   return Boolean(
-    typeof candidate.title === "string" &&
-      typeof candidate.description === "string" &&
-      candidate.i18n &&
+    candidate.i18n &&
       typeof candidate.i18n === "object" &&
       Array.isArray(candidate.i18n.languages) &&
       candidate.i18n.languages.every(
