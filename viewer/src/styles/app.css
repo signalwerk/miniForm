@@ -4,23 +4,19 @@
   font-weight: 100 900;
   font-stretch: 100%;
   font-display: swap;
-  src: url("https://team-ensemble.ch/assets/fonts/Geist/webfonts/Geist[wght].woff2")
+  src: url("https://ci.team-ensemble.ch/assets/fonts/Geist/webfonts/Geist[wght].woff2")
     format("woff2-variations");
 }
 
 @font-feature-values "Geist" {
   @styleset {
     alt-l: 3;
+    alt-a: 1;
+    alt-r: 4;
   }
 }
 
 :root {
-  /* 
-  --color-bg: #ffffff;
-  --color-bg-elevated: #ffffff;
-  --color-bg-surface: #ffffff;
-  --color-bg-hover: #000000; 
-  */
   --color-text: #000000;
   --color-text-subtle: #818181; /* placeholder text */
 
@@ -28,25 +24,10 @@
 
   --color-primary: var(--color-bubblegum-pink-500);
   --color-error: #c80000d2;
-  /* --color-text-muted: #000000;
-  --color-accent: #000000;
-  --color-accent-hover: #ffffff;
-  --color-accent-muted: rgba(0, 0, 0, 0.15);
-  --color-border: #000000;
-  --color-success: #000000;
- */
+
   --font-sans: "Geist", system-ui, sans-serif;
-  /* --font-mono: "IBM Plex Mono", monospace; */
   --space-sm: 0.5rem;
   --space-md: 1rem;
-  /* 
-  --space-xs: 0.25rem;
-  --space-lg: 1.5rem;
-  --space-xl: 2rem;
-  --space-2xl: 3rem;
-  --max-width: 1200px;
-  --transition-fast: 0.15s ease;
-  --transition-base: 0.25s ease; */
 }
 
 *,
@@ -69,18 +50,15 @@ html {
 
 body {
   font-family: var(--font-sans);
-  font-variant-alternates: styleset(alt-l);
+  font-variant-alternates: styleset(alt-l, alt-a, alt-R);
   font-weight: 500;
   line-height: 1.6;
   color: var(--color-text);
-  /* background-color: var(--color-bg); */
   min-height: 100vh;
 }
 
 ::selection {
   text-shadow: none;
-  /* background: var(--color-accent-muted);
-  color: var(--color-text); */
 }
 
 main {
@@ -236,7 +214,6 @@ button {
   font-family: var(--font-sans);
   font-size: 0.875rem;
   font-weight: 500;
-  /* border: 0.15em solid var(--color-text); */
   border-radius: 0;
 }
 
