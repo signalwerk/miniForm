@@ -246,7 +246,7 @@ const getDocumentHeight = () => {
     return 0;
   }
 
-  const mainElement = document.querySelector("main");
+  const mainElement = document.querySelector("#root");
 
   if (mainElement instanceof HTMLElement) {
     return Math.ceil(mainElement.getBoundingClientRect().height);
@@ -844,7 +844,7 @@ function SurveyEntryPage() {
       return;
     }
 
-    const mainElement = document.querySelector("main");
+    const mainElement = document.querySelector("#root");
     const observer =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
