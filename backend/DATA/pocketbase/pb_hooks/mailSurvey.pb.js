@@ -82,27 +82,39 @@ onRecordAfterCreateSuccess((e) => {
       ? answers
           .map((a) => {
             const label = escapeHtml(a?.label || a?.id || "Field");
+            const rawValue = a?.value;
 
-            let value = "-";
-            if (
-              a?.value !== null &&
-              a?.value !== undefined &&
-              a?.value !== ""
+            let valueHtml = `<div style="font-size: 14px; line-height: 1.5;">-</div>`;
+
+            if (Array.isArray(rawValue)) {
+              valueHtml = rawValue.length
+                ? `
+            <ul style="margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.5;">
+              ${rawValue.map((item) => `<li>${escapeHtml(String(item))}</li>`).join("")}
+            </ul>
+          `
+                : `<div style="font-size: 14px; line-height: 1.5;">-</div>`;
+            } else if (
+              rawValue !== null &&
+              rawValue !== undefined &&
+              rawValue !== ""
             ) {
-              value =
-                typeof a.value === "object"
-                  ? escapeHtml(JSON.stringify(a.value, null, 2))
-                  : escapeHtml(String(a.value));
+              const value =
+                typeof rawValue === "object"
+                  ? escapeHtml(JSON.stringify(rawValue, null, 2))
+                  : escapeHtml(String(rawValue));
+
+              valueHtml = `<div style="margin: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">${value}</div>`;
             }
 
             return `
-            <section style="margin: 0 0 20px 0;">
-              <h2 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 600;">
-                ${label}
-              </h2>
-              <div style="margin: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">${value}</div>
-            </section>
-          `;
+        <section style="margin: 0 0 20px 0;">
+          <h2 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 600;">
+            ${label}
+          </h2>
+          ${valueHtml}
+        </section>
+      `;
           })
           .join("")
       : `<p style="margin: 0; font-size: 14px; line-height: 1.5;">No answers submitted.</p>`;
