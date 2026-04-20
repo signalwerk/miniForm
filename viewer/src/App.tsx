@@ -3,6 +3,7 @@ import { Navigate, createBrowserRouter, useNavigate, useParams, useSearchParams 
 
 type TranslationId = string;
 type LanguageId = string;
+type ViewerLocale = "en_US" | "de_CH" | "fr_CH" | "it_CH";
 
 type NavigationMode = "next" | "section" | "submit";
 
@@ -14,6 +15,7 @@ interface NavigationRule {
 interface ViewerLanguage {
   id: LanguageId;
   label: string;
+  locale: ViewerLocale;
 }
 
 interface ViewerFormOption {
@@ -118,6 +120,92 @@ interface SubmissionAnswer {
 }
 
 const OTHER_OPTION_VALUE = "__other__";
+const DEFAULT_VIEWER_LOCALE: ViewerLocale = "en_US";
+
+const VIEWER_COPY: Record<
+  ViewerLocale,
+  {
+    missingRequiredFields: string;
+    continue: string;
+    back: string;
+    submit: string;
+    submitting: string;
+    selectOption: string;
+    loadingSurvey: string;
+    surveyViewer: string;
+    missingSurveyId: string;
+    couldNotLoadSurvey: string;
+    couldNotSubmitSurvey: string;
+    survey: string;
+    language: string;
+    thisSurveyHasNoSections: string;
+  }
+> = {
+  en_US: {
+    missingRequiredFields: "There are missing required fields.",
+    continue: "Continue",
+    back: "Back",
+    submit: "Submit",
+    submitting: "Submitting...",
+    selectOption: "Select an option",
+    loadingSurvey: "Loading survey…",
+    surveyViewer: "Survey viewer",
+    missingSurveyId: "Missing survey id.",
+    couldNotLoadSurvey: "Could not load the survey.",
+    couldNotSubmitSurvey: "Could not submit the survey.",
+    survey: "Survey",
+    language: "Language",
+    thisSurveyHasNoSections: "This survey has no sections.",
+  },
+  de_CH: {
+    missingRequiredFields: "Es fehlen erforderliche Felder.",
+    continue: "Weiter",
+    back: "Zurück",
+    submit: "Absenden",
+    submitting: "Wird gesendet...",
+    selectOption: "Option auswählen",
+    loadingSurvey: "Umfrage wird geladen…",
+    surveyViewer: "Umfrageansicht",
+    missingSurveyId: "Fehlende Umfrage-ID.",
+    couldNotLoadSurvey: "Die Umfrage konnte nicht geladen werden.",
+    couldNotSubmitSurvey: "Die Umfrage konnte nicht gesendet werden.",
+    survey: "Umfrage",
+    language: "Sprache",
+    thisSurveyHasNoSections: "Diese Umfrage hat keine Sektionen.",
+  },
+  fr_CH: {
+    missingRequiredFields: "Il manque des champs obligatoires.",
+    continue: "Continuer",
+    back: "Retour",
+    submit: "Envoyer",
+    submitting: "Envoi en cours...",
+    selectOption: "Choisir une option",
+    loadingSurvey: "Chargement du sondage…",
+    surveyViewer: "Affichage du sondage",
+    missingSurveyId: "Identifiant du sondage manquant.",
+    couldNotLoadSurvey: "Impossible de charger le sondage.",
+    couldNotSubmitSurvey: "Impossible d’envoyer le sondage.",
+    survey: "Sondage",
+    language: "Langue",
+    thisSurveyHasNoSections: "Ce sondage n’a aucune section.",
+  },
+  it_CH: {
+    missingRequiredFields: "Mancano campi obbligatori.",
+    continue: "Continua",
+    back: "Indietro",
+    submit: "Invia",
+    submitting: "Invio in corso...",
+    selectOption: "Seleziona un’opzione",
+    loadingSurvey: "Caricamento del sondaggio…",
+    surveyViewer: "Visualizzazione sondaggio",
+    missingSurveyId: "ID del sondaggio mancante.",
+    couldNotLoadSurvey: "Impossibile caricare il sondaggio.",
+    couldNotSubmitSurvey: "Impossibile inviare il sondaggio.",
+    survey: "Sondaggio",
+    language: "Lingua",
+    thisSurveyHasNoSections: "Questo sondaggio non ha sezioni.",
+  },
+};
 
 const resolveApiBaseUrl = () => {
   const fromEnv = import.meta.env.VITE_POCKETBASE_URL;
@@ -464,7 +552,7 @@ function SurveyEntryPage() {
 
     const loadForm = async () => {
       if (!id) {
-        setErrorMessage("Missing survey id.");
+        setErrorMessage(VIEWER_COPY[DEFAULT_VIEWER_LOCALE].missingSurveyId);
         setIsLoading(false);
         return;
       }
@@ -476,7 +564,7 @@ function SurveyEntryPage() {
         const response = await fetch(`${resolveApiBaseUrl()}/api/forms/public/${id}`);
 
         if (!response.ok) {
-          throw new Error("Could not load the survey.");
+          throw new Error(VIEWER_COPY[DEFAULT_VIEWER_LOCALE].couldNotLoadSurvey);
         }
 
         const payload = (await response.json()) as ViewerForm;
@@ -496,7 +584,9 @@ function SurveyEntryPage() {
         setMissingRequiredBlockIds([]);
       } catch (error) {
         if (!isCancelled) {
-          setErrorMessage(error instanceof Error ? error.message : "Could not load the survey.");
+          setErrorMessage(
+            error instanceof Error ? error.message : VIEWER_COPY[DEFAULT_VIEWER_LOCALE].couldNotLoadSurvey,
+          );
         }
       } finally {
         if (!isCancelled) {
@@ -524,6 +614,16 @@ function SurveyEntryPage() {
 
     return requestedLanguageExists && requestedLanguageId ? requestedLanguageId : form.i18n.defaultLanguage;
   }, [form, searchParams]);
+
+  const activeLocale = useMemo(() => {
+    if (!form || !activeLanguageId) {
+      return DEFAULT_VIEWER_LOCALE;
+    }
+
+    return form.i18n.languages.find((language) => language.id === activeLanguageId)?.locale ?? DEFAULT_VIEWER_LOCALE;
+  }, [form, activeLanguageId]);
+
+  const copy = VIEWER_COPY[activeLocale];
 
   const currentStep = stepHistory[currentStepIndex] ?? null;
   const currentSection = useMemo(() => {
@@ -698,7 +798,7 @@ function SurveyEntryPage() {
     });
 
     if (!response.ok) {
-      throw new Error("Could not submit the survey.");
+      throw new Error(copy.couldNotSubmitSurvey);
     }
 
     return true;
@@ -715,7 +815,7 @@ function SurveyEntryPage() {
 
     if (nextMissingRequiredBlockIds.length > 0) {
       setMissingRequiredBlockIds(nextMissingRequiredBlockIds);
-      setErrorMessage("There are missing required fields.");
+      setErrorMessage(copy.missingRequiredFields);
       return;
     }
 
@@ -731,7 +831,7 @@ function SurveyEntryPage() {
         setStepHistory((currentHistory) => [...currentHistory.slice(0, currentStepIndex + 1), nextStep]);
         setCurrentStepIndex((currentIndex) => currentIndex + 1);
       } catch (error) {
-        setErrorMessage(error instanceof Error ? error.message : "Could not submit the survey.");
+        setErrorMessage(error instanceof Error ? error.message : copy.couldNotSubmitSurvey);
       } finally {
         setIsSubmitting(false);
       }
@@ -746,7 +846,7 @@ function SurveyEntryPage() {
   if (isLoading) {
     return (
       <main>
-        <p>Loading survey…</p>
+        <p>{copy.loadingSurvey}</p>
       </main>
     );
   }
@@ -754,8 +854,8 @@ function SurveyEntryPage() {
   if (!form) {
     return (
       <main>
-        <h1>Survey viewer</h1>
-        <p>{errorMessage || "Could not load the survey."}</p>
+        <h1>{copy.surveyViewer}</h1>
+        <p>{errorMessage || copy.couldNotLoadSurvey}</p>
       </main>
     );
   }
@@ -773,8 +873,8 @@ function SurveyEntryPage() {
   if (!currentSection) {
     return (
       <main>
-        <h1>Survey viewer</h1>
-        <p>This survey has no sections.</p>
+        <h1>{copy.surveyViewer}</h1>
+        <p>{copy.thisSurveyHasNoSections}</p>
       </main>
     );
   }
@@ -782,12 +882,12 @@ function SurveyEntryPage() {
   return (
     <main>
       <header>
-        <h1>Survey</h1>
+        <h1>{copy.survey}</h1>
         <p>ID: {id}</p>
 
         {!hasPinnedLanguage ? (
           <div>
-            <label htmlFor="viewer-language">Language</label>
+            <label htmlFor="viewer-language">{copy.language}</label>
             <select
               id="viewer-language"
               value={activeLanguageId}
@@ -879,7 +979,7 @@ function SurveyEntryPage() {
                           selectSingleChoiceOption(block.id, event.target.value || null);
                         }}
                       >
-                        <option value="">Select an option</option>
+                        <option value="">{copy.selectOption}</option>
                         {block.options.map((option) => (
                           <option key={option.id} value={option.id}>
                             {getTranslation(form, option.label, activeLanguageId)}
@@ -972,6 +1072,7 @@ function SurveyEntryPage() {
                   <label key={option.id} className="survey-choice">
                     <input
                       className="survey-choice__control survey-choice__control--checkbox"
+                      role="checkbox"
                       type="checkbox"
                       checked={answer.selectedOptionIds.includes(option.id)}
                       onChange={(event) => toggleMultipleChoiceOption(block.id, option.id, event.target.checked)}
@@ -985,6 +1086,7 @@ function SurveyEntryPage() {
                     <label className="survey-choice">
                       <input
                         className="survey-choice__control survey-choice__control--checkbox"
+                        role="checkbox"
                         type="checkbox"
                         checked={answer.isOtherSelected}
                         onChange={(event) => toggleMultipleChoiceOther(block.id, event.target.checked)}
@@ -1013,12 +1115,12 @@ function SurveyEntryPage() {
         <div>
           {currentStepIndex > 0 ? (
             <button type="button" onClick={goBack}>
-              Back
+              {copy.back}
             </button>
           ) : null}
 
           <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : previewNextStep.kind === "confirmation" ? "Submit" : "Continue"}
+            {isSubmitting ? copy.submitting : previewNextStep.kind === "confirmation" ? copy.submit : copy.continue}
           </button>
         </div>
       </form>

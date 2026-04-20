@@ -13,7 +13,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from "react-router-dom";
 import { SectionCard } from "./BlockCard";
 import { TranslationInput } from "./TranslationInput";
-import { createForm, validateForm, validateI18nSettings } from "../lib/form-model";
+import { FORM_LOCALE_OPTIONS, createForm, validateForm, validateI18nSettings } from "../lib/form-model";
 import { formReducer, getInitialFormState } from "../lib/form-reducer";
 import { getDropIndicator } from "../lib/dnd";
 import { createBlankFormRecord, getForm, saveForm } from "../lib/pocketbase";
@@ -560,7 +560,7 @@ export function EditorPage() {
               <div>
                 <p className="eyebrow">Languages</p>
                 <h3>Translations</h3>
-                <p className="helper-text">Language ids are generated automatically. Only the label is editable.</p>
+                <p className="helper-text">Language ids are generated automatically. Set a label and choose a locale.</p>
               </div>
               <button
                 type="button"
@@ -593,6 +593,27 @@ export function EditorPage() {
                         })
                       }
                     />
+                  </div>
+
+                  <div className="language-settings__field">
+                    <label htmlFor={`language-locale-${language.id}`}>Locale</label>
+                    <select
+                      id={`language-locale-${language.id}`}
+                      value={language.locale}
+                      onChange={(event) =>
+                        dispatch({
+                          type: "update_language_locale",
+                          languageId: language.id,
+                          locale: event.target.value as (typeof FORM_LOCALE_OPTIONS)[number]["value"],
+                        })
+                      }
+                    >
+                      {FORM_LOCALE_OPTIONS.map((locale) => (
+                        <option key={locale.value} value={locale.value}>
+                          {locale.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div className="language-settings__default">

@@ -21,6 +21,7 @@ import {
 import type {
   BlockType,
   FormDefinition,
+  FormLocale,
   FormSection,
   LanguageId,
   NavigationRule,
@@ -36,6 +37,7 @@ export type FormAction =
   | { type: "delete_handler"; handlerId: string }
   | { type: "add_language" }
   | { type: "update_language_label"; languageId: string; label: string }
+  | { type: "update_language_locale"; languageId: string; locale: FormLocale }
   | { type: "delete_language"; languageId: string }
   | { type: "set_default_language"; languageId: string }
   | { type: "update_translation"; translationId: TranslationId; languageId: LanguageId; value: string }
@@ -148,6 +150,22 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
               ? {
                   ...language,
                   label: action.label,
+                }
+              : language,
+          ),
+        },
+      });
+
+    case "update_language_locale":
+      return normalizeForm({
+        ...state,
+        i18n: {
+          ...state.i18n,
+          languages: state.i18n.languages.map((language) =>
+            language.id === action.languageId
+              ? {
+                  ...language,
+                  locale: action.locale,
                 }
               : language,
           ),

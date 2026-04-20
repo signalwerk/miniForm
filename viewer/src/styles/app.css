@@ -171,11 +171,27 @@ label {
 }
 
 .survey-choice__control--checkbox {
+  --_accent: var(--color-primary);
+  --_bga: transparent;
+  --_mask: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="3" stroke="%23000" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5l10 -10"/></svg>');
   border-radius: 0.35rem;
+  position: relative;
+  background: transparent;
+}
+
+.survey-choice__control--checkbox[role="checkbox"]::after {
+  background: var(--_bga, transparent);
+  content: "";
+  inset: 0.12rem;
+  position: absolute;
+  mask: var(--_mask) no-repeat center / contain;
+  -webkit-mask: var(--_mask) no-repeat center / contain;
 }
 
 .survey-choice__control--checkbox:checked {
-  background: var(--color-primary);
+  border-color: transparent;
+  background: var(--_accent);
+  --_bga: Field;
 }
 
 .survey-choice__label {

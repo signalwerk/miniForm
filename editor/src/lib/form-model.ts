@@ -5,6 +5,7 @@ import type {
   EmailHandlerSettings,
   FormDefinition,
   FormLanguage,
+  FormLocale,
   FormBlock,
   FormOption,
   FormSection,
@@ -35,6 +36,29 @@ const createId = () => {
 
 export const createTranslationId = () => createId();
 export const createLanguageId = () => createId();
+
+export const FORM_LOCALE_OPTIONS: Array<{ value: FormLocale; label: string }> = [
+  { value: "en_US", label: "English (US)" },
+  { value: "de_CH", label: "Deutsch (Schweiz)" },
+  { value: "fr_CH", label: "Français (Suisse)" },
+  { value: "it_CH", label: "Italiano (Svizzera)" },
+];
+
+const DEFAULT_FORM_LOCALE: FormLocale = "en_US";
+
+const getDefaultLanguageLabel = (locale: FormLocale) => {
+  switch (locale) {
+    case "de_CH":
+      return "Deutsch";
+    case "fr_CH":
+      return "Français";
+    case "it_CH":
+      return "Italiano";
+    case "en_US":
+    default:
+      return "English";
+  }
+};
 
 export const BLOCK_TYPE_OPTIONS: Array<{ value: BlockType; label: string }> = [
   { value: "content", label: "Content" },
@@ -68,9 +92,17 @@ export const createFormLanguage = (languages: FormLanguage[]): FormLanguage => {
     nextId = createLanguageId();
   }
 
+  const nextLocale =
+    FORM_LOCALE_OPTIONS.find((option) => !languages.some((language) => language.locale === option.value))?.value ??
+    DEFAULT_FORM_LOCALE;
+
   return {
     id: nextId,
-    label: `Language ${languages.length + 1}`,
+    label:
+      languages.length === 0
+        ? getDefaultLanguageLabel(nextLocale)
+        : `${getDefaultLanguageLabel(nextLocale)} ${languages.length + 1}`,
+    locale: nextLocale,
   };
 };
 
@@ -192,7 +224,7 @@ export const createForm = (): FormDefinition => {
       content: confirmationContent,
     },
     i18n: {
-      languages: [{ id: defaultLanguage, label: "English" }],
+      languages: [{ id: defaultLanguage, label: "English", locale: DEFAULT_FORM_LOCALE }],
       defaultLanguage,
     },
     translations: createTranslationEntries([confirmationContent]),
@@ -563,7 +595,17 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
           : createTranslationId(),
     },
     i18n: {
-      languages: form.i18n.languages ?? [],
+      languages: (form.i18n.languages ?? []).map((language, index) => ({
+        id: language.id,
+        label: language.label ?? "",
+        locale:
+          language.locale &&
+          FORM_LOCALE_OPTIONS.some((option) => option.value === language.locale)
+            ? language.locale
+            : index === 0
+              ? DEFAULT_FORM_LOCALE
+              : DEFAULT_FORM_LOCALE,
+      })),
       defaultLanguage: form.i18n.defaultLanguage ?? "",
     },
     translations: form.translations ?? {},
@@ -738,6 +780,10 @@ export const validateI18nSettings = (form: FormDefinition) => {
     if (!language.label.trim()) {
       issues.push(`Language "${language.id}" needs a label.`);
     }
+
+    if (!FORM_LOCALE_OPTIONS.some((option) => option.value === language.locale)) {
+      issues.push(`Language "${language.id}" needs a supported locale.`);
+    }
   });
 
   if (!form.i18n.defaultLanguage || !seenIds.has(form.i18n.defaultLanguage)) {
@@ -905,7 +951,8 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
           language &&
           typeof language === "object" &&
           typeof language.id === "string" &&
-          typeof language.label === "string",
+          typeof language.label === "string" &&
+          ((language.locale === undefined && true) || typeof language.locale === "string"),
       ) &&
       typeof candidate.i18n.defaultLanguage === "string" &&
       candidate.translations &&

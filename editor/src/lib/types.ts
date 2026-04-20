@@ -3,6 +3,7 @@ export type BlockType = "content" | "text" | "single_choice" | "multiple_choice"
 export type NavigationMode = "next" | "section" | "submit";
 export type TranslationId = string;
 export type LanguageId = string;
+export type FormLocale = "en_US" | "de_CH" | "fr_CH" | "it_CH";
 
 export interface NavigationRule {
   mode: NavigationMode;
@@ -12,6 +13,7 @@ export interface NavigationRule {
 export interface FormLanguage {
   id: LanguageId;
   label: string;
+  locale: FormLocale;
 }
 
 export interface FormI18nSettings {
