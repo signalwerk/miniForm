@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Navigate,
   createBrowserRouter,
@@ -127,8 +127,21 @@ interface SubmissionAnswer {
   value: string | string[];
 }
 
+interface EmbeddedHeightMessage {
+  type: "iframe-embed:height";
+  id: string | null;
+  height: number;
+}
+
+interface EmbeddedScrollMessage {
+  type: "iframe-embed:scroll-top";
+  id: string | null;
+}
+
 const OTHER_OPTION_VALUE = "__other__";
 const DEFAULT_VIEWER_LOCALE: ViewerLocale = "en_US";
+const EMBEDDED_HEIGHT_MESSAGE_TYPE = "iframe-embed:height";
+const EMBEDDED_SCROLL_MESSAGE_TYPE = "iframe-embed:scroll-top";
 
 const VIEWER_COPY: Record<
   ViewerLocale,
@@ -226,6 +239,23 @@ const resolveApiBaseUrl = () => {
   }
 
   return "http://0.0.0.0:8090";
+};
+
+const getDocumentHeight = () => {
+  if (typeof document === "undefined") {
+    return 0;
+  }
+
+  const { body, documentElement } = document;
+
+  return Math.max(
+    body?.scrollHeight ?? 0,
+    body?.offsetHeight ?? 0,
+    body?.clientHeight ?? 0,
+    documentElement?.scrollHeight ?? 0,
+    documentElement?.offsetHeight ?? 0,
+    documentElement?.clientHeight ?? 0,
+  );
 };
 
 const getTranslation = (
@@ -626,6 +656,10 @@ function SurveyEntryPage() {
   const [missingRequiredBlockIds, setMissingRequiredBlockIds] = useState<
     string[]
   >([]);
+  const heightFrameRef = useRef<number | null>(null);
+  const lastReportedHeightRef = useRef<number | null>(null);
+  const lastRenderedStepKeyRef = useRef<string>("");
+  const isEmbedded = searchParams.get("embedded") === "true";
 
   useEffect(() => {
     let isCancelled = false;
@@ -744,10 +778,139 @@ function SurveyEntryPage() {
       ? getSectionNextStep(survey, currentSectionIndex, answers)
       : ({ kind: "confirmation" } as const);
 
+  const postToParent = useCallback(
+    (message: EmbeddedHeightMessage | EmbeddedScrollMessage) => {
+      if (
+        !isEmbedded ||
+        typeof window === "undefined" ||
+        window.parent === window
+      ) {
+        return;
+      }
+
+      window.parent.postMessage(message, "*");
+    },
+    [isEmbedded],
+  );
+
+  const reportEmbeddedHeight = useCallback(() => {
+    if (!isEmbedded) {
+      return;
+    }
+
+    const height = getDocumentHeight();
+
+    if (height === lastReportedHeightRef.current) {
+      return;
+    }
+
+    lastReportedHeightRef.current = height;
+
+    postToParent({
+      type: EMBEDDED_HEIGHT_MESSAGE_TYPE,
+      id: id ?? null,
+      height,
+    });
+  }, [currentStep, id, isEmbedded, postToParent]);
+
+  const scheduleEmbeddedHeightReport = useCallback(() => {
+    if (!isEmbedded || typeof window === "undefined") {
+      return;
+    }
+
+    if (heightFrameRef.current !== null) {
+      window.cancelAnimationFrame(heightFrameRef.current);
+    }
+
+    heightFrameRef.current = window.requestAnimationFrame(() => {
+      heightFrameRef.current = window.requestAnimationFrame(() => {
+        heightFrameRef.current = null;
+        reportEmbeddedHeight();
+      });
+    });
+  }, [isEmbedded, reportEmbeddedHeight]);
+
   const clearValidationState = () => {
     setErrorMessage("");
     setMissingRequiredBlockIds([]);
   };
+
+  useEffect(() => {
+    if (!isEmbedded || typeof window === "undefined") {
+      return;
+    }
+
+    const observer =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            scheduleEmbeddedHeightReport();
+          })
+        : null;
+
+    if (document.body) {
+      observer?.observe(document.body);
+    }
+
+    if (document.documentElement) {
+      observer?.observe(document.documentElement);
+    }
+
+    const handleResize = () => {
+      scheduleEmbeddedHeightReport();
+    };
+
+    const handleInteraction = () => {
+      scheduleEmbeddedHeightReport();
+    };
+
+    window.addEventListener("resize", handleResize);
+    document.addEventListener("input", handleInteraction, true);
+    document.addEventListener("change", handleInteraction, true);
+
+    scheduleEmbeddedHeightReport();
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", handleResize);
+      document.removeEventListener("input", handleInteraction, true);
+      document.removeEventListener("change", handleInteraction, true);
+
+      if (heightFrameRef.current !== null) {
+        window.cancelAnimationFrame(heightFrameRef.current);
+        heightFrameRef.current = null;
+      }
+    };
+  }, [isEmbedded, scheduleEmbeddedHeightReport]);
+
+  useEffect(() => {
+    if (!isEmbedded || !currentStep) {
+      return;
+    }
+
+    const stepKey =
+      currentStep.kind === "confirmation"
+        ? `confirmation:${currentStepIndex}`
+        : `${currentStep.sectionId}:${currentStepIndex}`;
+
+    if (lastRenderedStepKeyRef.current === stepKey) {
+      return;
+    }
+
+    lastRenderedStepKeyRef.current = stepKey;
+    scheduleEmbeddedHeightReport();
+
+    postToParent({
+      type: EMBEDDED_SCROLL_MESSAGE_TYPE,
+      id: id ?? null,
+    });
+  }, [
+    currentStep,
+    currentStepIndex,
+    id,
+    isEmbedded,
+    postToParent,
+    scheduleEmbeddedHeightReport,
+  ]);
 
   const setLanguage = (languageId: string) => {
     const nextSearchParams = new URLSearchParams(searchParams);
