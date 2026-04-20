@@ -905,27 +905,33 @@ function SurveyEntryPage() {
                   ) : (
                     <>
                       {block.options.map((option) => (
-                        <label key={option.id}>
+                        <label key={option.id} className="survey-choice">
                           <input
+                            className="survey-choice__control"
                             type="radio"
                             name={`block-${block.id}`}
                             checked={!answer.isOtherSelected && answer.selectedOptionId === option.id}
                             onChange={() => selectSingleChoiceOption(block.id, option.id)}
                           />
-                          <span>{getTranslation(form, option.label, activeLanguageId)}</span>
+                          <span className="survey-choice__label">
+                            {getTranslation(form, option.label, activeLanguageId)}
+                          </span>
                         </label>
                       ))}
 
                       {block.allowOther ? (
                         <>
-                          <label>
+                          <label className="survey-choice">
                             <input
+                              className="survey-choice__control"
                               type="radio"
                               name={`block-${block.id}`}
                               checked={answer.isOtherSelected}
                               onChange={() => selectSingleChoiceOther(block.id)}
                             />
-                            <span>{getTranslation(form, block.otherOptionLabel, activeLanguageId)}</span>
+                            <span className="survey-choice__label">
+                              {getTranslation(form, block.otherOptionLabel, activeLanguageId)}
+                            </span>
                           </label>
 
                           {answer.isOtherSelected ? (
@@ -963,25 +969,29 @@ function SurveyEntryPage() {
                 <p>{getTranslation(form, block.description, activeLanguageId)}</p>
 
                 {block.options.map((option) => (
-                  <label key={option.id}>
+                  <label key={option.id} className="survey-choice">
                     <input
+                      className="survey-choice__control survey-choice__control--checkbox"
                       type="checkbox"
                       checked={answer.selectedOptionIds.includes(option.id)}
                       onChange={(event) => toggleMultipleChoiceOption(block.id, option.id, event.target.checked)}
                     />
-                    <span>{getTranslation(form, option.label, activeLanguageId)}</span>
+                    <span className="survey-choice__label">{getTranslation(form, option.label, activeLanguageId)}</span>
                   </label>
                 ))}
 
                 {block.allowOther ? (
                   <>
-                    <label>
+                    <label className="survey-choice">
                       <input
+                        className="survey-choice__control survey-choice__control--checkbox"
                         type="checkbox"
                         checked={answer.isOtherSelected}
                         onChange={(event) => toggleMultipleChoiceOther(block.id, event.target.checked)}
                       />
-                      <span>{getTranslation(form, block.otherOptionLabel, activeLanguageId)}</span>
+                      <span className="survey-choice__label">
+                        {getTranslation(form, block.otherOptionLabel, activeLanguageId)}
+                      </span>
                     </label>
 
                     {answer.isOtherSelected ? (
