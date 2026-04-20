@@ -246,15 +246,17 @@ const getDocumentHeight = () => {
     return 0;
   }
 
+  const mainElement = document.querySelector("main");
+
+  if (mainElement instanceof HTMLElement) {
+    return Math.ceil(mainElement.getBoundingClientRect().height);
+  }
+
   const { body, documentElement } = document;
 
   return Math.max(
-    body?.scrollHeight ?? 0,
-    body?.offsetHeight ?? 0,
-    body?.clientHeight ?? 0,
     documentElement?.scrollHeight ?? 0,
-    documentElement?.offsetHeight ?? 0,
-    documentElement?.clientHeight ?? 0,
+    body?.scrollHeight ?? 0,
   );
 };
 
@@ -658,6 +660,7 @@ function SurveyEntryPage() {
   >([]);
   const heightFrameRef = useRef<number | null>(null);
   const lastReportedHeightRef = useRef<number | null>(null);
+  const forceNextHeightPostRef = useRef(false);
   const lastRenderedStepKeyRef = useRef<string>("");
   const isEmbedded = searchParams.get("embedded") === "true";
 
@@ -800,10 +803,11 @@ function SurveyEntryPage() {
 
     const height = getDocumentHeight();
 
-    if (height === lastReportedHeightRef.current) {
+    if (!forceNextHeightPostRef.current && height === lastReportedHeightRef.current) {
       return;
     }
 
+    forceNextHeightPostRef.current = false;
     lastReportedHeightRef.current = height;
 
     postToParent({
@@ -840,6 +844,7 @@ function SurveyEntryPage() {
       return;
     }
 
+    const mainElement = document.querySelector("main");
     const observer =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
@@ -847,12 +852,16 @@ function SurveyEntryPage() {
           })
         : null;
 
-    if (document.body) {
-      observer?.observe(document.body);
-    }
+    if (mainElement instanceof HTMLElement) {
+      observer?.observe(mainElement);
+    } else {
+      if (document.body) {
+        observer?.observe(document.body);
+      }
 
-    if (document.documentElement) {
-      observer?.observe(document.documentElement);
+      if (document.documentElement) {
+        observer?.observe(document.documentElement);
+      }
     }
 
     const handleResize = () => {
@@ -897,6 +906,7 @@ function SurveyEntryPage() {
     }
 
     lastRenderedStepKeyRef.current = stepKey;
+    forceNextHeightPostRef.current = true;
     scheduleEmbeddedHeightReport();
 
     postToParent({
