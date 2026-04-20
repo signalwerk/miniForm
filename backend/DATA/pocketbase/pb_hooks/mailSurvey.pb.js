@@ -62,7 +62,7 @@ onRecordAfterCreateSuccess((e) => {
 
     const answersText = answers
       .map((a) => {
-        const label = a?.label || a?.key || a?.id || "Field";
+        const label = a?.label || a?.id || "Field";
         const value =
           a?.value === null || a?.value === undefined || a?.value === ""
             ? "-"

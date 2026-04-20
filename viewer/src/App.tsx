@@ -114,7 +114,6 @@ type ViewerStep = { kind: "section"; sectionId: string } | { kind: "confirmation
 
 interface SubmissionAnswer {
   id: string;
-  key: string;
   label: string;
   value: string | string[];
 }
@@ -483,7 +482,6 @@ const buildSubmissionAnswers = (form: ViewerForm, answers: AnswersState, languag
       if (isTextBlock(block)) {
         submissionAnswers.push({
           id: block.id,
-          key: block.id,
           label,
           value: answer?.type === "text" ? answer.value : "",
         });
@@ -504,7 +502,6 @@ const buildSubmissionAnswers = (form: ViewerForm, answers: AnswersState, languag
 
         submissionAnswers.push({
           id: block.id,
-          key: block.id,
           label,
           value,
         });
@@ -524,7 +521,6 @@ const buildSubmissionAnswers = (form: ViewerForm, answers: AnswersState, languag
 
       submissionAnswers.push({
         id: block.id,
-        key: block.id,
         label,
         value: selectedValues,
       });
