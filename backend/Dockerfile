@@ -21,5 +21,7 @@ COPY --from=downloader /pocketbase /usr/local/bin/pocketbase
 
 # copy pocketbase data
 COPY ./DATA/pocketbase/pb_migrations /pb_migrations
+COPY ./DATA/pocketbase/pb_public /pb_public
+COPY ./DATA/pocketbase/pb_hooks /pb_hooks
 
 ENTRYPOINT ["/usr/local/bin/pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--publicDir=/pb_public", "--hooksDir=/pb_hooks"] 
