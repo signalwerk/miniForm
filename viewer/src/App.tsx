@@ -6,6 +6,7 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
+import { renderMarkdown } from "./lib/markdown";
 
 type TranslationId = string;
 type LanguageId = string;
@@ -143,7 +144,7 @@ const VIEWER_COPY: Record<
     missingSurveyId: string;
     couldNotLoadSurvey: string;
     couldNotSubmitSurvey: string;
-    survey: string;
+    survey: string; // not currently used
     language: string;
     thisSurveyHasNoSections: string;
   }
@@ -1008,9 +1009,10 @@ function SurveyEntryPage() {
     return (
       <main>
         <header>
-          <h1>
-            {getTranslation(form, form.confirmation.content, activeLanguageId)}
-          </h1>
+          {renderMarkdown(
+            getTranslation(form, form.confirmation.content, activeLanguageId),
+            "confirmation",
+          )}
         </header>
       </main>
     );
@@ -1026,9 +1028,9 @@ function SurveyEntryPage() {
   }
 
   return (
-    <main>
+    <main data-form={id}>
       <header>
-        <h1 data-form={id}>{copy.survey}</h1>
+        {/* <h1>{copy.survey}</h1> */}
 
         {!hasPinnedLanguage ? (
           <div>
@@ -1061,7 +1063,10 @@ function SurveyEntryPage() {
                 key={block.id}
                 className="survey-block survey-block--content"
               >
-                <p>{getTranslation(form, block.content, activeLanguageId)}</p>
+                {renderMarkdown(
+                  getTranslation(form, block.content, activeLanguageId),
+                  `content-${block.id}`,
+                )}
               </section>
             );
           }
@@ -1143,9 +1148,10 @@ function SurveyEntryPage() {
                   <legend>
                     {getQuestionLabel(form, block, activeLanguageId)}
                   </legend>
-                  <p>
-                    {getTranslation(form, block.description, activeLanguageId)}
-                  </p>
+                  {renderMarkdown(
+                    getTranslation(form, block.description, activeLanguageId),
+                    `single-choice-description-${block.id}`,
+                  )}
 
                   {block.showAsDropdown ? (
                     <>
@@ -1291,9 +1297,10 @@ function SurveyEntryPage() {
                 <legend>
                   {getQuestionLabel(form, block, activeLanguageId)}
                 </legend>
-                <p>
-                  {getTranslation(form, block.description, activeLanguageId)}
-                </p>
+                {renderMarkdown(
+                  getTranslation(form, block.description, activeLanguageId),
+                  `multiple-choice-description-${block.id}`,
+                )}
 
                 {block.options.map((option) => (
                   <label key={option.id} className="survey-choice">
