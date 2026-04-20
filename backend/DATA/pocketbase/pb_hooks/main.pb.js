@@ -38,14 +38,51 @@ routerAdd("POST", "/api/forms/public/{id}", (c) => {
   applyPublicCors(c);
 
   try {
-    const record = $app.findRecordById("forms", id);
+    const form = $app.findRecordById("forms", id);
 
-    if (!record.getBool("published")) {
+    if (!form || !form.getBool("published")) {
       return c.json(404, { error: "Form not found" });
     }
 
-    return c.json(200, { success: true });
+    let body = {};
+    try {
+      body = c.requestInfo().data || {};
+    } catch (_) {
+      return c.json(400, { error: "Invalid JSON body" });
+    }
+
+    if (body.formId && body.formId !== id) {
+      return c.json(400, { error: "Form id mismatch" });
+    }
+
+    if (!Array.isArray(body.answers) || body.answers.length === 0) {
+      return c.json(400, { error: "Answers are required" });
+    }
+
+    const responsesCollection = $app.findCollectionByNameOrId("responses");
+    const response = new Record(responsesCollection);
+
+    response.set("survey", form.id);
+    response.set("data", {
+      formId: id,
+      languageId: body.languageId ?? null,
+      answers: body.answers,
+      submittedAt: (new Date()).toISOString(),
+    });
+    response.set("processing", {
+      status: "pending",
+      attempts: 0,
+    });
+
+    $app.save(response);
+
+    return c.json(201, {
+      success: true,
+      id: response.id,
+      success: true,
+    });
   } catch (err) {
-    return c.json(404, { error: "Form not found" });
+    console.log(err);
+    return c.json(500, { error: "Failed to submit form" });
   }
 });
