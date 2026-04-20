@@ -19,7 +19,7 @@ services:
     ports:
       - "8090:8090"
     volumes:
-      - /DATA/monojournal/pocketbase/data:/pb_data
+      - /DATA/survey/pocketbase/data:/pb_data
       - ./backend/DATA/pocketbase/pb_public:/pb_public
       - ./backend/DATA/pocketbase/pb_hooks:/pb_hooks
       - ./backend/DATA/pocketbase/pb_migrations:/pb_migrations

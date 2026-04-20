@@ -166,8 +166,11 @@ label {
 
 .survey-choice__control:checked {
   border-color: var(--color-primary);
-  background:
-    radial-gradient(circle, var(--color-primary) 0 42%, transparent 43% 100%);
+  background: radial-gradient(
+    circle,
+    var(--color-primary) 0 42%,
+    transparent 43% 100%
+  );
 }
 
 .survey-choice__control--checkbox {
@@ -252,10 +255,18 @@ input::placeholder {
   color: var(--color-text-subtle);
 }
 
-.survey-block--error, 
+.survey-block--error,
 .survey-block__other-input--error {
   border-left-color: var(--color-error);
   border-left-width: 0.25em;
   border-left-style: solid;
   padding-left: 0.75em;
+}
+
+.error-message {
+  color: var(--color-error);
+}
+
+.required-indicator {
+  color: var(--color-error);
 }
