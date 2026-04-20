@@ -1,0 +1,8 @@
+.git
+.gitignore
+.DS_Store
+editor/node_modules
+editor/dist
+viewer/node_modules
+viewer/dist
+backend/DATA/pocketbase/pb_data
