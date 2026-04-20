@@ -15,42 +15,42 @@ onRecordAfterCreateSuccess((e) => {
 
   try {
     const responseData = new DynamicModel({
-      formId: "",
+      surveyId: "",
       languageId: "",
       answers: [],
     });
 
     record.unmarshalJSONField("data", responseData);
 
-    if (!responseData.formId) {
+    if (!responseData.surveyId) {
       processing.status = "skipped";
-      processing.reason = "missing data.formId";
+      processing.reason = "missing data.surveyId";
       processing.finishedAt = new Date().toISOString();
 
       record.set("processing", processing);
       $app.save(record);
 
-      console.log("responses hook: missing data.formId");
+      console.log("responses hook: missing data.surveyId");
       return;
     }
 
-    const form = $app.findRecordById("forms", responseData.formId);
-    if (!form) {
+    const survey = $app.findRecordById("surveys", responseData.surveyId);
+    if (!survey) {
       processing.status = "failed";
-      processing.reason = `form not found: ${responseData.formId}`;
+      processing.reason = `survey not found: ${responseData.surveyId}`;
       processing.finishedAt = new Date().toISOString();
 
       record.set("processing", processing);
       $app.save(record);
 
-      console.log("responses hook: form not found:", responseData.formId);
+      console.log("responses hook: survey not found:", responseData.surveyId);
       return;
     }
 
     const settings = new DynamicModel({
       handlers: [],
     });
-    form.unmarshalJSONField("settings", settings);
+    survey.unmarshalJSONField("settings", settings);
 
     const handlers = Array.isArray(settings.handlers) ? settings.handlers : [];
     const emailHandlers = handlers.filter((h) => h && h.type === "email");
@@ -139,8 +139,8 @@ onRecordAfterCreateSuccess((e) => {
 
         const subject =
           handler.subject ||
-          `New form response: ${form.get("title") || form.id}`;
-        const intro = handler.message || "A new form response was submitted.";
+          `New survey response: ${survey.get("title") || survey.id}`;
+        const intro = handler.message || "A new survey response was submitted.";
 
         const htmlBody = `
           <!doctype html>
@@ -156,8 +156,8 @@ onRecordAfterCreateSuccess((e) => {
                 <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;" />
 
                 <div style="margin: 0 0 24px 0; font-size: 8px; line-height: 1.5;">
-                  <div><strong>Form:</strong> ${escapeHtml(form.get("title") || form.id)}</div>
-                  <div><strong>Form ID:</strong> ${escapeHtml(responseData.formId)}</div>
+                  <div><strong>Survey:</strong> ${escapeHtml(survey.get("title") || survey.id)}</div>
+                  <div><strong>Survey ID:</strong> ${escapeHtml(responseData.surveyId)}</div>
                   <div><strong>Response ID:</strong> ${escapeHtml(record.id)}</div>
                   ${responseData.languageId ? `<div><strong>Language ID:</strong> ${escapeHtml(responseData.languageId)}</div>` : ""}
                 </div>

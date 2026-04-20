@@ -1,4 +1,4 @@
-import { NAVIGATION_OPTIONS } from "../lib/form-model";
+import { NAVIGATION_OPTIONS } from "../lib/survey-model";
 import type { NavigationRule } from "../lib/types";
 
 interface BlockTarget {

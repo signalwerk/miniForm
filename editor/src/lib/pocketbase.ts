@@ -1,6 +1,6 @@
 import PocketBase, { type RecordModel } from "pocketbase";
-import { hydrateFormDefinition, isSupportedFormDefinition, serializeFormDefinition } from "./form-model";
-import type { FormDefinition, FormSettings, FormSummary, PersistedFormDefinition } from "./types";
+import { hydrateSurveyDefinition, isSupportedSurveyDefinition, serializeSurveyDefinition } from "./survey-model";
+import type { PersistedSurveyDefinition, SurveyDefinition, SurveySettings, SurveySummary } from "./types";
 
 const resolvePocketBaseUrl = () => {
   const fromEnv = import.meta.env.VITE_POCKETBASE_URL;
@@ -18,34 +18,34 @@ const resolvePocketBaseUrl = () => {
 export const pb = new PocketBase(resolvePocketBaseUrl());
 pb.autoCancellation(false);
 
-const COLLECTION_NAME = "forms";
+const COLLECTION_NAME = "surveys";
 
-export interface SaveFormResponse {
+export interface SaveSurveyResponse {
   recordId: string;
 }
 
-interface FormRecord extends RecordModel {
+interface SurveyRecord extends RecordModel {
   created?: string;
   title: string;
   description: string;
   published?: boolean;
-  settings?: FormSettings;
-  data: PersistedFormDefinition;
+  settings?: SurveySettings;
+  data: PersistedSurveyDefinition;
   updated?: string;
 }
 
-const getPersistedTitle = (form: FormDefinition) => {
-  const title = form.title.trim();
-  return title.length > 0 ? title : "Untitled form";
+const getPersistedTitle = (survey: SurveyDefinition) => {
+  const title = survey.title.trim();
+  return title.length > 0 ? title : "Untitled survey";
 };
 
-const buildFormPayload = (form: FormDefinition, ownerId: string) => ({
+const buildSurveyPayload = (survey: SurveyDefinition, ownerId: string) => ({
   owner: ownerId,
-  title: getPersistedTitle(form),
-  description: form.description,
-  published: form.published,
-  settings: form.settings,
-  data: serializeFormDefinition(form),
+  title: getPersistedTitle(survey),
+  description: survey.description,
+  published: survey.published,
+  settings: survey.settings,
+  data: serializeSurveyDefinition(survey),
 });
 
 export const getCurrentUser = () => pb.authStore.model;
@@ -76,13 +76,13 @@ export const logoutUser = () => {
   pb.authStore.clear();
 };
 
-export const listForms = async (): Promise<FormSummary[]> => {
-  const records = await pb.collection(COLLECTION_NAME).getFullList<FormRecord>();
+export const listSurveys = async (): Promise<SurveySummary[]> => {
+  const records = await pb.collection(COLLECTION_NAME).getFullList<SurveyRecord>();
 
   return records
     .map((record) => ({
       recordId: record.id,
-      title: record.title || "Untitled form",
+      title: record.title || "Untitled survey",
       updated: record.updated || record.created || "",
     }))
     .sort((left, right) => {
@@ -92,14 +92,14 @@ export const listForms = async (): Promise<FormSummary[]> => {
     });
 };
 
-export const getForm = async (recordId: string): Promise<FormDefinition> => {
-  const record = await pb.collection(COLLECTION_NAME).getOne<FormRecord>(recordId);
+export const getSurvey = async (recordId: string): Promise<SurveyDefinition> => {
+  const record = await pb.collection(COLLECTION_NAME).getOne<SurveyRecord>(recordId);
 
-  if (!isSupportedFormDefinition(record.data)) {
-    throw new Error("This form uses an older data shape and is no longer supported by the editor.");
+  if (!isSupportedSurveyDefinition(record.data)) {
+    throw new Error("This survey uses an older data shape and is no longer supported by the editor.");
   }
 
-  return hydrateFormDefinition(record.data, {
+  return hydrateSurveyDefinition(record.data, {
     title: record.title,
     description: record.description,
     published: Boolean(record.published),
@@ -107,45 +107,45 @@ export const getForm = async (recordId: string): Promise<FormDefinition> => {
   });
 };
 
-export const createBlankFormRecord = async (form: FormDefinition): Promise<SaveFormResponse> => {
+export const createBlankSurveyRecord = async (survey: SurveyDefinition): Promise<SaveSurveyResponse> => {
   const user = getCurrentUser();
 
   if (!user?.id) {
-    throw new Error("You need to be logged in before creating a form.");
+    throw new Error("You need to be logged in before creating a survey.");
   }
 
-  const created = await pb.collection(COLLECTION_NAME).create<FormRecord>(buildFormPayload(form, user.id));
+  const created = await pb.collection(COLLECTION_NAME).create<SurveyRecord>(buildSurveyPayload(survey, user.id));
 
   return { recordId: created.id };
 };
 
-export const deleteForm = async (recordId: string) => {
+export const deleteSurvey = async (recordId: string) => {
   const user = getCurrentUser();
 
   if (!user?.id) {
-    throw new Error("You need to be logged in before deleting a form.");
+    throw new Error("You need to be logged in before deleting a survey.");
   }
 
   await pb.collection(COLLECTION_NAME).delete(recordId);
 };
 
-export const saveForm = async (
-  form: FormDefinition,
+export const saveSurvey = async (
+  survey: SurveyDefinition,
   recordId: string | null,
-): Promise<SaveFormResponse> => {
+): Promise<SaveSurveyResponse> => {
   const user = getCurrentUser();
 
   if (!user?.id) {
     throw new Error("You need to be logged in before saving to PocketBase.");
   }
 
-  const payload = buildFormPayload(form, user.id);
+  const payload = buildSurveyPayload(survey, user.id);
 
   if (recordId) {
-    const updated = await pb.collection(COLLECTION_NAME).update<FormRecord>(recordId, payload);
+    const updated = await pb.collection(COLLECTION_NAME).update<SurveyRecord>(recordId, payload);
     return { recordId: updated.id };
   }
 
-  const created = await pb.collection(COLLECTION_NAME).create<FormRecord>(payload);
+  const created = await pb.collection(COLLECTION_NAME).create<SurveyRecord>(payload);
   return { recordId: created.id };
 };

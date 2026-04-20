@@ -45,7 +45,7 @@ export function AuthPanel({
         <div className="panel__stack">
           <p className="status-pill status-pill--ok">Signed in</p>
           <p>{authModel.email}</p>
-          <p className="helper-text">Forms are stored per user, so each account only sees its own editor records.</p>
+          <p className="helper-text">Surveys are stored per user, so each account only sees its own editor records.</p>
         </div>
       ) : (
         <form

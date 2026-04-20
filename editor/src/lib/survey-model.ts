@@ -3,21 +3,21 @@ import type {
   ChoiceBlock,
   ContentBlock,
   EmailHandlerSettings,
-  FormDefinition,
-  FormLanguage,
-  FormLocale,
-  FormBlock,
-  FormOption,
-  FormSection,
-  FormSettings,
-  FormTranslations,
+  SurveyDefinition,
+  SurveyLanguage,
+  SurveyLocale,
+  SurveyBlock,
+  SurveyOption,
+  SurveySection,
+  SurveySettings,
+  SurveyTranslations,
   MultipleChoiceBlock,
   NavigationMode,
   NavigationRule,
   PersistedContentBlock,
-  PersistedFormBlock,
-  PersistedFormDefinition,
-  PersistedFormSection,
+  PersistedSurveyBlock,
+  PersistedSurveyDefinition,
+  PersistedSurveySection,
   SingleChoiceBlock,
   TextBlock,
   TranslationId,
@@ -37,16 +37,16 @@ const createId = () => {
 export const createTranslationId = () => createId();
 export const createLanguageId = () => createId();
 
-export const FORM_LOCALE_OPTIONS: Array<{ value: FormLocale; label: string }> = [
+export const SURVEY_LOCALE_OPTIONS: Array<{ value: SurveyLocale; label: string }> = [
   { value: "en_US", label: "English (US)" },
   { value: "de_CH", label: "Deutsch (Schweiz)" },
   { value: "fr_CH", label: "Français (Suisse)" },
   { value: "it_CH", label: "Italiano (Svizzera)" },
 ];
 
-const DEFAULT_FORM_LOCALE: FormLocale = "en_US";
+const DEFAULT_SURVEY_LOCALE: SurveyLocale = "en_US";
 
-const getDefaultLanguageLabel = (locale: FormLocale) => {
+const getDefaultLanguageLabel = (locale: SurveyLocale) => {
   switch (locale) {
     case "de_CH":
       return "Deutsch";
@@ -70,7 +70,7 @@ export const BLOCK_TYPE_OPTIONS: Array<{ value: BlockType; label: string }> = [
 export const NAVIGATION_OPTIONS: Array<{ value: NavigationMode; label: string }> = [
   { value: "next", label: "Continue to next section" },
   { value: "section", label: "Go to a specific section" },
-  { value: "submit", label: "Submit form" },
+  { value: "submit", label: "Submit survey" },
 ];
 
 export const blockHasOptions = (type: BlockType) => type === "single_choice" || type === "multiple_choice";
@@ -85,7 +85,7 @@ export const createNavigationRule = (
   targetSectionId: mode === "section" ? targetSectionId : null,
 });
 
-export const createFormLanguage = (languages: FormLanguage[]): FormLanguage => {
+export const createSurveyLanguage = (languages: SurveyLanguage[]): SurveyLanguage => {
   let nextId = createLanguageId();
 
   while (languages.some((language) => language.id === nextId)) {
@@ -93,8 +93,8 @@ export const createFormLanguage = (languages: FormLanguage[]): FormLanguage => {
   }
 
   const nextLocale =
-    FORM_LOCALE_OPTIONS.find((option) => !languages.some((language) => language.locale === option.value))?.value ??
-    DEFAULT_FORM_LOCALE;
+    SURVEY_LOCALE_OPTIONS.find((option) => !languages.some((language) => language.locale === option.value))?.value ??
+    DEFAULT_SURVEY_LOCALE;
 
   return {
     id: nextId,
@@ -116,31 +116,31 @@ export const createEmailHandler = (): EmailHandlerSettings => ({
 
 export const createTranslationEntries = (
   keys: Array<TranslationId | null | undefined>,
-): FormTranslations =>
+): SurveyTranslations =>
   Object.fromEntries(keys.filter((key): key is TranslationId => Boolean(key)).map((key) => [key, {}]));
 
-export const createOption = (): FormOption => ({
+export const createOption = (): SurveyOption => ({
   id: createId(),
   label: createTranslationId(),
   navigation: createNavigationRule(),
 });
 
 export const isContentBlock = (
-  block: FormBlock | PersistedFormBlock,
+  block: SurveyBlock | PersistedSurveyBlock,
 ): block is ContentBlock | PersistedContentBlock => block.type === "content";
 
-export const isTextBlock = (block: FormBlock | PersistedFormBlock): block is TextBlock => block.type === "text";
+export const isTextBlock = (block: SurveyBlock | PersistedSurveyBlock): block is TextBlock => block.type === "text";
 
 export const isSingleChoiceBlock = (
-  block: FormBlock | PersistedFormBlock,
+  block: SurveyBlock | PersistedSurveyBlock,
 ): block is SingleChoiceBlock => block.type === "single_choice";
 
 export const isMultipleChoiceBlock = (
-  block: FormBlock | PersistedFormBlock,
+  block: SurveyBlock | PersistedSurveyBlock,
 ): block is MultipleChoiceBlock => block.type === "multiple_choice";
 
 export const isChoiceBlock = (
-  block: FormBlock | PersistedFormBlock,
+  block: SurveyBlock | PersistedSurveyBlock,
 ): block is ChoiceBlock => isSingleChoiceBlock(block) || isMultipleChoiceBlock(block);
 
 export const createContentBlock = (): ContentBlock => ({
@@ -188,7 +188,7 @@ export const createMultipleChoiceBlock = (): MultipleChoiceBlock => ({
   isCollapsed: false,
 });
 
-export const createBlock = (type: BlockType = "text"): FormBlock => {
+export const createBlock = (type: BlockType = "text"): SurveyBlock => {
   switch (type) {
     case "content":
       return createContentBlock();
@@ -202,14 +202,14 @@ export const createBlock = (type: BlockType = "text"): FormBlock => {
   }
 };
 
-export const createSection = (): FormSection => ({
+export const createSection = (): SurveySection => ({
   id: createId(),
   blocks: [],
   afterSection: createNavigationRule(),
   isCollapsed: false,
 });
 
-export const createForm = (): FormDefinition => {
+export const createSurvey = (): SurveyDefinition => {
   const defaultLanguage = createLanguageId();
   const confirmationContent = createTranslationId();
 
@@ -224,7 +224,7 @@ export const createForm = (): FormDefinition => {
       content: confirmationContent,
     },
     i18n: {
-      languages: [{ id: defaultLanguage, label: "English", locale: DEFAULT_FORM_LOCALE }],
+      languages: [{ id: defaultLanguage, label: "English", locale: DEFAULT_SURVEY_LOCALE }],
       defaultLanguage,
     },
     translations: createTranslationEntries([confirmationContent]),
@@ -232,7 +232,7 @@ export const createForm = (): FormDefinition => {
   };
 };
 
-const normalizeFormSettings = (settings: unknown): FormSettings => {
+const normalizeSurveySettings = (settings: unknown): SurveySettings => {
   if (!settings || typeof settings !== "object") {
     return { handlers: [] };
   }
@@ -265,7 +265,7 @@ const normalizeFormSettings = (settings: unknown): FormSettings => {
   };
 };
 
-const copyTranslationEntry = (translations: FormTranslations, sourceId: TranslationId) => {
+const copyTranslationEntry = (translations: SurveyTranslations, sourceId: TranslationId) => {
   const source = translations[sourceId];
 
   if (!source) {
@@ -275,7 +275,7 @@ const copyTranslationEntry = (translations: FormTranslations, sourceId: Translat
   return Object.fromEntries(Object.entries(source).map(([languageId, value]) => [languageId, value]));
 };
 
-export const duplicateOption = (option: FormOption, translations: FormTranslations) => {
+export const duplicateOption = (option: SurveyOption, translations: SurveyTranslations) => {
   const label = createTranslationId();
 
   return {
@@ -291,7 +291,7 @@ export const duplicateOption = (option: FormOption, translations: FormTranslatio
   };
 };
 
-export const duplicateBlock = (block: FormBlock, translations: FormTranslations) => {
+export const duplicateBlock = (block: SurveyBlock, translations: SurveyTranslations) => {
   const content = isContentBlock(block) ? createTranslationId() : null;
   const title = !isContentBlock(block) ? createTranslationId() : null;
   const description = !isContentBlock(block) ? createTranslationId() : null;
@@ -364,7 +364,7 @@ export const duplicateBlock = (block: FormBlock, translations: FormTranslations)
   };
 };
 
-export const duplicateSection = (section: FormSection, translations: FormTranslations) => {
+export const duplicateSection = (section: SurveySection, translations: SurveyTranslations) => {
   const duplicatedBlocks = section.blocks.map((block) => duplicateBlock(block, translations));
 
   return {
@@ -397,7 +397,7 @@ export const moveItem = <T,>(items: T[], fromIndex: number, toIndex: number) => 
 };
 
 export const getTranslationValue = (
-  translations: FormTranslations,
+  translations: SurveyTranslations,
   translationId: TranslationId | null,
   languageId: string,
 ) => {
@@ -408,12 +408,12 @@ export const getTranslationValue = (
   return translations[translationId]?.[languageId] ?? "";
 };
 
-const collectReferencedTranslationIds = (form: FormDefinition) => {
+const collectReferencedTranslationIds = (survey: SurveyDefinition) => {
   const ids = new Set<TranslationId>();
 
-  ids.add(form.confirmation.content);
+  ids.add(survey.confirmation.content);
 
-  form.sections.forEach((section) => {
+  survey.sections.forEach((section) => {
     section.blocks.forEach((block) => {
       if (isContentBlock(block)) {
         ids.add(block.content);
@@ -462,7 +462,7 @@ export const normalizeNavigationRule = (
   };
 };
 
-export const normalizeBlockType = (block: FormBlock, nextType: BlockType): FormBlock => {
+export const normalizeBlockType = (block: SurveyBlock, nextType: BlockType): SurveyBlock => {
   const promptTranslation = isContentBlock(block) ? block.content : block.title;
   const descriptionTranslation = !isContentBlock(block) ? block.description : createTranslationId();
   const required = !isContentBlock(block) ? block.required : false;
@@ -532,10 +532,10 @@ export const normalizeBlockType = (block: FormBlock, nextType: BlockType): FormB
   }
 };
 
-export const normalizeForm = (form: FormDefinition): FormDefinition => {
-  const sections = form.sections ?? [];
+export const normalizeSurvey = (survey: SurveyDefinition): SurveyDefinition => {
+  const sections = survey.sections ?? [];
   const validSectionIds = new Set(sections.map((section) => section.id));
-  const validLanguageIds = new Set(form.i18n.languages.map((language) => language.id));
+  const validLanguageIds = new Set(survey.i18n.languages.map((language) => language.id));
 
   const normalizedSections = sections.map((section) => ({
     ...section,
@@ -583,41 +583,41 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
     }),
   }));
 
-  const normalizedForm: FormDefinition = {
-    title: form.title ?? "",
-    description: form.description ?? "",
-    published: form.published ?? false,
-    settings: normalizeFormSettings(form.settings),
+  const normalizedSurvey: SurveyDefinition = {
+    title: survey.title ?? "",
+    description: survey.description ?? "",
+    published: survey.published ?? false,
+    settings: normalizeSurveySettings(survey.settings),
     confirmation: {
       content:
-        form.confirmation && typeof form.confirmation.content === "string" && form.confirmation.content.length > 0
-          ? form.confirmation.content
+        survey.confirmation && typeof survey.confirmation.content === "string" && survey.confirmation.content.length > 0
+          ? survey.confirmation.content
           : createTranslationId(),
     },
     i18n: {
-      languages: (form.i18n.languages ?? []).map((language, index) => ({
+      languages: (survey.i18n.languages ?? []).map((language, index) => ({
         id: language.id,
         label: language.label ?? "",
         locale:
           language.locale &&
-          FORM_LOCALE_OPTIONS.some((option) => option.value === language.locale)
+          SURVEY_LOCALE_OPTIONS.some((option) => option.value === language.locale)
             ? language.locale
             : index === 0
-              ? DEFAULT_FORM_LOCALE
-              : DEFAULT_FORM_LOCALE,
+              ? DEFAULT_SURVEY_LOCALE
+              : DEFAULT_SURVEY_LOCALE,
       })),
-      defaultLanguage: form.i18n.defaultLanguage ?? "",
+      defaultLanguage: survey.i18n.defaultLanguage ?? "",
     },
-    translations: form.translations ?? {},
+    translations: survey.translations ?? {},
     sections: normalizedSections,
   };
 
-  const referencedTranslations = collectReferencedTranslationIds(normalizedForm);
+  const referencedTranslations = collectReferencedTranslationIds(normalizedSurvey);
   const translations = Object.fromEntries(
     [...referencedTranslations].map((translationId) => [
       translationId,
       Object.fromEntries(
-        Object.entries(normalizedForm.translations[translationId] ?? {}).filter(([languageId]) =>
+        Object.entries(normalizedSurvey.translations[translationId] ?? {}).filter(([languageId]) =>
           validLanguageIds.has(languageId),
         ),
       ),
@@ -625,20 +625,20 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
   );
 
   return {
-    ...normalizedForm,
+    ...normalizedSurvey,
     translations,
   };
 };
 
-export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefinition => ({
-  confirmation: form.confirmation,
-  i18n: form.i18n,
-  translations: form.translations,
-  sections: form.sections.map(
-    (section): PersistedFormSection => ({
+export const serializeSurveyDefinition = (survey: SurveyDefinition): PersistedSurveyDefinition => ({
+  confirmation: survey.confirmation,
+  i18n: survey.i18n,
+  translations: survey.translations,
+  sections: survey.sections.map(
+    (section): PersistedSurveySection => ({
       id: section.id,
       afterSection: section.afterSection,
-      blocks: section.blocks.map((block): PersistedFormBlock => {
+      blocks: section.blocks.map((block): PersistedSurveyBlock => {
         switch (block.type) {
           case "content":
             return {
@@ -706,19 +706,19 @@ export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefi
   ),
 });
 
-export const hydrateFormDefinition = (
-  form: PersistedFormDefinition,
+export const hydrateSurveyDefinition = (
+  survey: PersistedSurveyDefinition,
   metadata?: { title?: string; description?: string; published?: boolean; settings?: unknown },
-): FormDefinition =>
-  normalizeForm({
+): SurveyDefinition =>
+  normalizeSurvey({
     title: metadata?.title ?? "",
     description: metadata?.description ?? "",
     published: metadata?.published ?? false,
-    settings: normalizeFormSettings(metadata?.settings),
-    confirmation: form.confirmation,
-    i18n: form.i18n,
-    translations: form.translations,
-    sections: form.sections.map((section) => ({
+    settings: normalizeSurveySettings(metadata?.settings),
+    confirmation: survey.confirmation,
+    i18n: survey.i18n,
+    translations: survey.translations,
+    sections: survey.sections.map((section) => ({
       id: section.id,
       afterSection: section.afterSection,
       isCollapsed: false,
@@ -762,15 +762,15 @@ export const hydrateFormDefinition = (
     })),
   });
 
-export const validateI18nSettings = (form: FormDefinition) => {
+export const validateI18nSettings = (survey: SurveyDefinition) => {
   const issues: string[] = [];
   const seenIds = new Set<string>();
 
-  if (form.i18n.languages.length === 0) {
+  if (survey.i18n.languages.length === 0) {
     issues.push("At least one language is required.");
   }
 
-  form.i18n.languages.forEach((language) => {
+  survey.i18n.languages.forEach((language) => {
     if (seenIds.has(language.id)) {
       issues.push("Some language IDs are duplicated.");
     } else {
@@ -781,32 +781,32 @@ export const validateI18nSettings = (form: FormDefinition) => {
       issues.push(`Language "${language.id}" needs a label.`);
     }
 
-    if (!FORM_LOCALE_OPTIONS.some((option) => option.value === language.locale)) {
+    if (!SURVEY_LOCALE_OPTIONS.some((option) => option.value === language.locale)) {
       issues.push(`Language "${language.id}" needs a supported locale.`);
     }
   });
 
-  if (!form.i18n.defaultLanguage || !seenIds.has(form.i18n.defaultLanguage)) {
+  if (!survey.i18n.defaultLanguage || !seenIds.has(survey.i18n.defaultLanguage)) {
     issues.push("The default language must match one of the configured languages.");
   }
 
   return issues;
 };
 
-export const validateForm = (form: FormDefinition) => {
-  const issues: string[] = [...validateI18nSettings(form)];
-  const sectionIds = new Set(form.sections.map((section) => section.id));
-  const blockIds = new Set(form.sections.flatMap((section) => section.blocks.map((block) => block.id)));
-  const previewLanguage = form.i18n.defaultLanguage;
+export const validateSurvey = (survey: SurveyDefinition) => {
+  const issues: string[] = [...validateI18nSettings(survey)];
+  const sectionIds = new Set(survey.sections.map((section) => section.id));
+  const blockIds = new Set(survey.sections.flatMap((section) => section.blocks.map((block) => block.id)));
+  const previewLanguage = survey.i18n.defaultLanguage;
 
-  form.sections.forEach((section, sectionIndex) => {
+  survey.sections.forEach((section, sectionIndex) => {
     if (section.afterSection.mode === "section" && !section.afterSection.targetSectionId) {
       issues.push(`Section ${sectionIndex + 1} is missing an "After section" target.`);
     }
 
     section.blocks.forEach((block) => {
       const blockTitle = getTranslationValue(
-        form.translations,
+        survey.translations,
         isContentBlock(block) ? block.content : block.title,
         previewLanguage,
       );
@@ -817,7 +817,7 @@ export const validateForm = (form: FormDefinition) => {
 
       if (isSingleChoiceBlock(block) && block.routeByAnswer) {
         block.options.forEach((option) => {
-          const optionLabel = getTranslationValue(form.translations, option.label, previewLanguage);
+          const optionLabel = getTranslationValue(survey.translations, option.label, previewLanguage);
 
           if (option.navigation.mode === "section" && !option.navigation.targetSectionId) {
             issues.push(
@@ -827,7 +827,7 @@ export const validateForm = (form: FormDefinition) => {
         });
 
         if (block.allowOther && block.otherOptionNavigation.mode === "section" && !block.otherOptionNavigation.targetSectionId) {
-          const otherLabel = getTranslationValue(form.translations, block.otherOptionLabel, previewLanguage);
+          const otherLabel = getTranslationValue(survey.translations, block.otherOptionLabel, previewLanguage);
 
           issues.push(
             `"${otherLabel || "Other"}" in "${blockTitle || "Untitled block"}" is missing a target section.`,
@@ -837,23 +837,23 @@ export const validateForm = (form: FormDefinition) => {
     });
   });
 
-  if (sectionIds.size !== form.sections.length) {
+  if (sectionIds.size !== survey.sections.length) {
     issues.push("Some section IDs are duplicated.");
   }
 
-  if (blockIds.size !== form.sections.flatMap((section) => section.blocks).length) {
+  if (blockIds.size !== survey.sections.flatMap((section) => section.blocks).length) {
     issues.push("Some block IDs are duplicated.");
   }
 
   return issues;
 };
 
-export const isSupportedFormDefinition = (value: unknown): value is PersistedFormDefinition => {
+export const isSupportedSurveyDefinition = (value: unknown): value is PersistedSurveyDefinition => {
   if (!value || typeof value !== "object") {
     return false;
   }
 
-  const candidate = value as Partial<PersistedFormDefinition>;
+  const candidate = value as Partial<PersistedSurveyDefinition>;
   const supportedBlockTypes = new Set<BlockType>(["content", "text", "single_choice", "multiple_choice"]);
 
   const hasStringMap = (entry: unknown) =>
@@ -872,16 +872,16 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
     Boolean(
       option &&
         typeof option === "object" &&
-        typeof (option as FormOption).id === "string" &&
-        typeof (option as FormOption).label === "string" &&
-        (((option as FormOption).navigation as unknown) === undefined ||
-          hasNavigationRule((option as FormOption).navigation)),
+        typeof (option as SurveyOption).id === "string" &&
+        typeof (option as SurveyOption).label === "string" &&
+        (((option as SurveyOption).navigation as unknown) === undefined ||
+          hasNavigationRule((option as SurveyOption).navigation)),
     );
 
   const hasBlockShape = (block: unknown) =>
-    Boolean(block && typeof block === "object" && typeof (block as PersistedFormBlock).id === "string") &&
+    Boolean(block && typeof block === "object" && typeof (block as PersistedSurveyBlock).id === "string") &&
     (() => {
-      const candidateBlock = block as PersistedFormBlock;
+      const candidateBlock = block as PersistedSurveyBlock;
 
       if (!supportedBlockTypes.has(candidateBlock.type)) {
         return false;
@@ -933,10 +933,10 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
     Boolean(
       section &&
         typeof section === "object" &&
-        typeof (section as PersistedFormSection).id === "string" &&
-        Array.isArray((section as PersistedFormSection).blocks) &&
-        (section as PersistedFormSection).blocks.every(hasBlockShape) &&
-        hasNavigationRule((section as PersistedFormSection).afterSection),
+        typeof (section as PersistedSurveySection).id === "string" &&
+        Array.isArray((section as PersistedSurveySection).blocks) &&
+        (section as PersistedSurveySection).blocks.every(hasBlockShape) &&
+        hasNavigationRule((section as PersistedSurveySection).afterSection),
     );
 
   return Boolean(

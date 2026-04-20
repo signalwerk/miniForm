@@ -25,7 +25,7 @@ interface ViewerLanguage {
   locale: ViewerLocale;
 }
 
-interface ViewerFormOption {
+interface ViewerSurveyOption {
   id: string;
   label: TranslationId;
   navigation?: NavigationRule;
@@ -58,7 +58,7 @@ interface ViewerSingleChoiceBlock {
   allowOther: boolean;
   otherOptionLabel?: TranslationId;
   otherOptionNavigation?: NavigationRule;
-  options: ViewerFormOption[];
+  options: ViewerSurveyOption[];
 }
 
 interface ViewerMultipleChoiceBlock {
@@ -69,7 +69,7 @@ interface ViewerMultipleChoiceBlock {
   required: boolean;
   allowOther: boolean;
   otherOptionLabel?: TranslationId;
-  options: ViewerFormOption[];
+  options: ViewerSurveyOption[];
 }
 
 type ViewerBlock =
@@ -84,7 +84,7 @@ interface ViewerSection {
   blocks: ViewerBlock[];
 }
 
-interface ViewerForm {
+interface ViewerSurvey {
   confirmation: {
     content: TranslationId;
   };
@@ -229,7 +229,7 @@ const resolveApiBaseUrl = () => {
 };
 
 const getTranslation = (
-  form: ViewerForm,
+  survey: ViewerSurvey,
   translationId: string | undefined,
   languageId: LanguageId,
 ) => {
@@ -237,7 +237,7 @@ const getTranslation = (
     return "";
   }
 
-  return form.translations[translationId]?.[languageId] ?? "";
+  return survey.translations[translationId]?.[languageId] ?? "";
 };
 
 const isContentBlock = (block: ViewerBlock): block is ViewerContentBlock =>
@@ -280,10 +280,10 @@ const createInitialAnswer = (block: ViewerBlock): BlockAnswer | null => {
   return null;
 };
 
-const normalizeAnswers = (form: ViewerForm, currentAnswers: AnswersState) => {
+const normalizeAnswers = (survey: ViewerSurvey, currentAnswers: AnswersState) => {
   const nextAnswers: AnswersState = {};
 
-  form.sections.forEach((section) => {
+  survey.sections.forEach((section) => {
     section.blocks.forEach((block) => {
       const currentAnswer = currentAnswers[block.id];
       const initialAnswer = createInitialAnswer(block);
@@ -342,13 +342,13 @@ const normalizeAnswers = (form: ViewerForm, currentAnswers: AnswersState) => {
   return nextAnswers;
 };
 
-const getSectionById = (form: ViewerForm, sectionId: string | null) =>
+const getSectionById = (survey: ViewerSurvey, sectionId: string | null) =>
   sectionId
-    ? (form.sections.find((section) => section.id === sectionId) ?? null)
+    ? (survey.sections.find((section) => section.id === sectionId) ?? null)
     : null;
 
 const getNextStepFromRule = (
-  form: ViewerForm,
+  survey: ViewerSurvey,
   currentSectionIndex: number,
   rule: NavigationRule,
 ): ViewerStep => {
@@ -360,7 +360,7 @@ const getNextStepFromRule = (
     return { kind: "section", sectionId: rule.targetSectionId };
   }
 
-  const nextSection = form.sections[currentSectionIndex + 1];
+  const nextSection = survey.sections[currentSectionIndex + 1];
 
   if (!nextSection) {
     return { kind: "confirmation" };
@@ -370,11 +370,11 @@ const getNextStepFromRule = (
 };
 
 const getSectionNextStep = (
-  form: ViewerForm,
+  survey: ViewerSurvey,
   currentSectionIndex: number,
   answers: AnswersState,
 ): ViewerStep => {
-  const section = form.sections[currentSectionIndex];
+  const section = survey.sections[currentSectionIndex];
 
   if (!section) {
     return { kind: "confirmation" };
@@ -386,7 +386,7 @@ const getSectionNextStep = (
   );
 
   if (!routedBlock) {
-    return getNextStepFromRule(form, currentSectionIndex, section.afterSection);
+    return getNextStepFromRule(survey, currentSectionIndex, section.afterSection);
   }
 
   const answer = answers[routedBlock.id];
@@ -399,7 +399,7 @@ const getSectionNextStep = (
 
       if (selectedOption?.navigation) {
         return getNextStepFromRule(
-          form,
+          survey,
           currentSectionIndex,
           selectedOption.navigation,
         );
@@ -412,20 +412,20 @@ const getSectionNextStep = (
       routedBlock.otherOptionNavigation
     ) {
       return getNextStepFromRule(
-        form,
+        survey,
         currentSectionIndex,
         routedBlock.otherOptionNavigation,
       );
     }
   }
 
-  return getNextStepFromRule(form, currentSectionIndex, section.afterSection);
+  return getNextStepFromRule(survey, currentSectionIndex, section.afterSection);
 };
 
-const getAccessibleSectionIds = (form: ViewerForm, answers: AnswersState) => {
+const getAccessibleSectionIds = (survey: ViewerSurvey, answers: AnswersState) => {
   const accessibleSectionIds: string[] = [];
 
-  if (form.sections.length === 0) {
+  if (survey.sections.length === 0) {
     return accessibleSectionIds;
   }
 
@@ -434,9 +434,9 @@ const getAccessibleSectionIds = (form: ViewerForm, answers: AnswersState) => {
 
   while (
     currentSectionIndex >= 0 &&
-    currentSectionIndex < form.sections.length
+    currentSectionIndex < survey.sections.length
   ) {
-    const currentSection = form.sections[currentSectionIndex];
+    const currentSection = survey.sections[currentSectionIndex];
 
     if (seenSectionIds.has(currentSection.id)) {
       break;
@@ -445,13 +445,13 @@ const getAccessibleSectionIds = (form: ViewerForm, answers: AnswersState) => {
     seenSectionIds.add(currentSection.id);
     accessibleSectionIds.push(currentSection.id);
 
-    const nextStep = getSectionNextStep(form, currentSectionIndex, answers);
+    const nextStep = getSectionNextStep(survey, currentSectionIndex, answers);
 
     if (nextStep.kind === "confirmation") {
       break;
     }
 
-    const nextSectionIndex = form.sections.findIndex(
+    const nextSectionIndex = survey.sections.findIndex(
       (section) => section.id === nextStep.sectionId,
     );
 
@@ -466,12 +466,12 @@ const getAccessibleSectionIds = (form: ViewerForm, answers: AnswersState) => {
 };
 
 const getQuestionLabel = (
-  form: ViewerForm,
+  survey: ViewerSurvey,
   block: ViewerTextBlock | ViewerSingleChoiceBlock | ViewerMultipleChoiceBlock,
   languageId: LanguageId,
 ) => (
   <span>
-    {getTranslation(form, block.title, languageId)}
+    {getTranslation(survey, block.title, languageId)}
     {block.required ? <span className="required-indicator">*</span> : ""}
   </span>
 );
@@ -533,14 +533,14 @@ const validateSection = (
 };
 
 const buildSubmissionAnswers = (
-  form: ViewerForm,
+  survey: ViewerSurvey,
   answers: AnswersState,
   languageId: LanguageId,
 ): SubmissionAnswer[] => {
-  const accessibleSectionIds = new Set(getAccessibleSectionIds(form, answers));
+  const accessibleSectionIds = new Set(getAccessibleSectionIds(survey, answers));
   const submissionAnswers: SubmissionAnswer[] = [];
 
-  form.sections.forEach((section) => {
+  survey.sections.forEach((section) => {
     if (!accessibleSectionIds.has(section.id)) {
       return;
     }
@@ -550,7 +550,7 @@ const buildSubmissionAnswers = (
         return;
       }
 
-      const label = getTranslation(form, block.title, languageId);
+      const label = getTranslation(survey, block.title, languageId);
       const answer = answers[block.id];
 
       if (isTextBlock(block)) {
@@ -571,7 +571,7 @@ const buildSubmissionAnswers = (
               (option) => option.id === answer.selectedOptionId,
             );
             value = selectedOption
-              ? getTranslation(form, selectedOption.label, languageId)
+              ? getTranslation(survey, selectedOption.label, languageId)
               : "";
           } else if (answer.isOtherSelected) {
             value = answer.otherValue;
@@ -590,7 +590,7 @@ const buildSubmissionAnswers = (
         answer?.type === "multiple_choice"
           ? block.options
               .filter((option) => answer.selectedOptionIds.includes(option.id))
-              .map((option) => getTranslation(form, option.label, languageId))
+              .map((option) => getTranslation(survey, option.label, languageId))
           : [];
 
       if (
@@ -616,7 +616,7 @@ function SurveyEntryPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const [form, setForm] = useState<ViewerForm | null>(null);
+  const [survey, setSurvey] = useState<ViewerSurvey | null>(null);
   const [answers, setAnswers] = useState<AnswersState>({});
   const [stepHistory, setStepHistory] = useState<ViewerStep[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -630,7 +630,7 @@ function SurveyEntryPage() {
   useEffect(() => {
     let isCancelled = false;
 
-    const loadForm = async () => {
+    const loadSurvey = async () => {
       if (!id) {
         setErrorMessage(VIEWER_COPY[DEFAULT_VIEWER_LOCALE].missingSurveyId);
         setIsLoading(false);
@@ -642,7 +642,7 @@ function SurveyEntryPage() {
 
       try {
         const response = await fetch(
-          `${resolveApiBaseUrl()}/api/forms/public/${id}`,
+          `${resolveApiBaseUrl()}/api/surveys/public/${id}`,
         );
 
         if (!response.ok) {
@@ -651,13 +651,13 @@ function SurveyEntryPage() {
           );
         }
 
-        const payload = (await response.json()) as ViewerForm;
+        const payload = (await response.json()) as ViewerSurvey;
 
         if (isCancelled) {
           return;
         }
 
-        setForm(payload);
+        setSurvey(payload);
         setAnswers((currentAnswers) =>
           normalizeAnswers(payload, currentAnswers),
         );
@@ -683,7 +683,7 @@ function SurveyEntryPage() {
       }
     };
 
-    void loadForm();
+    void loadSurvey();
 
     return () => {
       isCancelled = true;
@@ -693,55 +693,55 @@ function SurveyEntryPage() {
   const hasPinnedLanguage = searchParams.has("lang");
 
   const activeLanguageId = useMemo(() => {
-    if (!form) {
+    if (!survey) {
       return "";
     }
 
     const requestedLanguageId = searchParams.get("lang");
-    const requestedLanguageExists = form.i18n.languages.some(
+    const requestedLanguageExists = survey.i18n.languages.some(
       (language) => language.id === requestedLanguageId,
     );
 
     return requestedLanguageExists && requestedLanguageId
       ? requestedLanguageId
-      : form.i18n.defaultLanguage;
-  }, [form, searchParams]);
+      : survey.i18n.defaultLanguage;
+  }, [survey, searchParams]);
 
   const activeLocale = useMemo(() => {
-    if (!form || !activeLanguageId) {
+    if (!survey || !activeLanguageId) {
       return DEFAULT_VIEWER_LOCALE;
     }
 
     return (
-      form.i18n.languages.find((language) => language.id === activeLanguageId)
+      survey.i18n.languages.find((language) => language.id === activeLanguageId)
         ?.locale ?? DEFAULT_VIEWER_LOCALE
     );
-  }, [form, activeLanguageId]);
+  }, [survey, activeLanguageId]);
 
   const copy = VIEWER_COPY[activeLocale];
 
   const currentStep = stepHistory[currentStepIndex] ?? null;
   const currentSection = useMemo(() => {
-    if (!form || !currentStep || currentStep.kind !== "section") {
+    if (!survey || !currentStep || currentStep.kind !== "section") {
       return null;
     }
 
-    return getSectionById(form, currentStep.sectionId);
-  }, [form, currentStep]);
+    return getSectionById(survey, currentStep.sectionId);
+  }, [survey, currentStep]);
 
   const currentSectionIndex = useMemo(() => {
-    if (!form || !currentSection) {
+    if (!survey || !currentSection) {
       return -1;
     }
 
-    return form.sections.findIndex(
+    return survey.sections.findIndex(
       (section) => section.id === currentSection.id,
     );
-  }, [form, currentSection]);
+  }, [survey, currentSection]);
 
   const previewNextStep =
-    form && currentSectionIndex >= 0
-      ? getSectionNextStep(form, currentSectionIndex, answers)
+    survey && currentSectionIndex >= 0
+      ? getSectionNextStep(survey, currentSectionIndex, answers)
       : ({ kind: "confirmation" } as const);
 
   const clearValidationState = () => {
@@ -908,18 +908,18 @@ function SurveyEntryPage() {
   };
 
   const submitResults = async () => {
-    if (!form || !id) {
+    if (!survey || !id) {
       return false;
     }
 
     const payload = {
-      formId: id,
+      surveyId: id,
       languageId: activeLanguageId,
-      answers: buildSubmissionAnswers(form, answers, activeLanguageId),
+      answers: buildSubmissionAnswers(survey, answers, activeLanguageId),
     };
 
     const response = await fetch(
-      `${resolveApiBaseUrl()}/api/forms/public/${id}`,
+      `${resolveApiBaseUrl()}/api/surveys/public/${id}`,
       {
         method: "POST",
         headers: {
@@ -939,7 +939,7 @@ function SurveyEntryPage() {
   const handleSubmitSection = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!form || !currentSection || currentSectionIndex < 0) {
+    if (!survey || !currentSection || currentSectionIndex < 0) {
       return;
     }
 
@@ -956,7 +956,7 @@ function SurveyEntryPage() {
 
     clearValidationState();
 
-    const nextStep = getSectionNextStep(form, currentSectionIndex, answers);
+    const nextStep = getSectionNextStep(survey, currentSectionIndex, answers);
 
     if (nextStep.kind === "confirmation") {
       setIsSubmitting(true);
@@ -994,7 +994,7 @@ function SurveyEntryPage() {
     );
   }
 
-  if (!form) {
+  if (!survey) {
     return (
       <main>
         <h1>{copy.surveyViewer}</h1>
@@ -1010,7 +1010,7 @@ function SurveyEntryPage() {
       <main>
         <header>
           {renderMarkdown(
-            getTranslation(form, form.confirmation.content, activeLanguageId),
+            getTranslation(survey, survey.confirmation.content, activeLanguageId),
             "confirmation",
           )}
         </header>
@@ -1028,7 +1028,7 @@ function SurveyEntryPage() {
   }
 
   return (
-    <main data-form={id}>
+    <main data-survey={id}>
       <header>
         {/* <h1>{copy.survey}</h1> */}
 
@@ -1040,7 +1040,7 @@ function SurveyEntryPage() {
               value={activeLanguageId}
               onChange={(event) => setLanguage(event.target.value)}
             >
-              {form.i18n.languages.map((language) => (
+              {survey.i18n.languages.map((language) => (
                 <option key={language.id} value={language.id}>
                   {language.label}
                 </option>
@@ -1064,7 +1064,7 @@ function SurveyEntryPage() {
                 className="survey-block survey-block--content"
               >
                 {renderMarkdown(
-                  getTranslation(form, block.content, activeLanguageId),
+                  getTranslation(survey, block.content, activeLanguageId),
                   `content-${block.id}`,
                 )}
               </section>
@@ -1082,10 +1082,10 @@ function SurveyEntryPage() {
                 aria-invalid={isMissing}
               >
                 <label htmlFor={`block-${block.id}`}>
-                  {getQuestionLabel(form, block, activeLanguageId)}
+                  {getQuestionLabel(survey, block, activeLanguageId)}
                 </label>
                 {renderMarkdown(
-                  getTranslation(form, block.description, activeLanguageId),
+                  getTranslation(survey, block.description, activeLanguageId),
                   `text-description-${block.id}`,
                 )}
                 {block.shortText ? (
@@ -1094,7 +1094,7 @@ function SurveyEntryPage() {
                     type="text"
                     value={value}
                     placeholder={getTranslation(
-                      form,
+                      survey,
                       block.placeholder,
                       activeLanguageId,
                     )}
@@ -1108,7 +1108,7 @@ function SurveyEntryPage() {
                     rows={5}
                     value={value}
                     placeholder={getTranslation(
-                      form,
+                      survey,
                       block.placeholder,
                       activeLanguageId,
                     )}
@@ -1147,10 +1147,10 @@ function SurveyEntryPage() {
               >
                 <fieldset>
                   <legend>
-                    {getQuestionLabel(form, block, activeLanguageId)}
+                    {getQuestionLabel(survey, block, activeLanguageId)}
                   </legend>
                   {renderMarkdown(
-                    getTranslation(form, block.description, activeLanguageId),
+                    getTranslation(survey, block.description, activeLanguageId),
                     `single-choice-description-${block.id}`,
                   )}
 
@@ -1178,7 +1178,7 @@ function SurveyEntryPage() {
                         {block.options.map((option) => (
                           <option key={option.id} value={option.id}>
                             {getTranslation(
-                              form,
+                              survey,
                               option.label,
                               activeLanguageId,
                             )}
@@ -1187,7 +1187,7 @@ function SurveyEntryPage() {
                         {block.allowOther ? (
                           <option value={OTHER_OPTION_VALUE}>
                             {getTranslation(
-                              form,
+                              survey,
                               block.otherOptionLabel,
                               activeLanguageId,
                             )}
@@ -1228,7 +1228,7 @@ function SurveyEntryPage() {
                           />
                           <span className="survey-choice__label">
                             {getTranslation(
-                              form,
+                              survey,
                               option.label,
                               activeLanguageId,
                             )}
@@ -1248,7 +1248,7 @@ function SurveyEntryPage() {
                             />
                             <span className="survey-choice__label">
                               {getTranslation(
-                                form,
+                                survey,
                                 block.otherOptionLabel,
                                 activeLanguageId,
                               )}
@@ -1296,10 +1296,10 @@ function SurveyEntryPage() {
             >
               <fieldset>
                 <legend>
-                  {getQuestionLabel(form, block, activeLanguageId)}
+                  {getQuestionLabel(survey, block, activeLanguageId)}
                 </legend>
                 {renderMarkdown(
-                  getTranslation(form, block.description, activeLanguageId),
+                  getTranslation(survey, block.description, activeLanguageId),
                   `multiple-choice-description-${block.id}`,
                 )}
 
@@ -1319,7 +1319,7 @@ function SurveyEntryPage() {
                       }
                     />
                     <span className="survey-choice__label">
-                      {getTranslation(form, option.label, activeLanguageId)}
+                      {getTranslation(survey, option.label, activeLanguageId)}
                     </span>
                   </label>
                 ))}
@@ -1341,7 +1341,7 @@ function SurveyEntryPage() {
                       />
                       <span className="survey-choice__label">
                         {getTranslation(
-                          form,
+                          survey,
                           block.otherOptionLabel,
                           activeLanguageId,
                         )}

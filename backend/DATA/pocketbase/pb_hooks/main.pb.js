@@ -1,44 +1,43 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-routerAdd("OPTIONS", "/api/forms/public/{id}", (c) => {
+routerAdd("OPTIONS", "/api/surveys/public/{id}", (c) => {
   const { applyPublicCors } = require(__hooks + "/cors.js");
   applyPublicCors(c);
   return c.noContent(204);
 });
 
-routerAdd("GET", "/api/forms/public/{id}", (c) => {
+routerAdd("GET", "/api/surveys/public/{id}", (c) => {
   const { applyPublicCors } = require(__hooks + "/cors.js");
   applyPublicCors(c);
 
   const id = c.request.pathValue("id");
 
   try {
-    // fetch the form record by id
-    const record = $app.findRecordById("forms", id);
+    const record = $app.findRecordById("surveys", id);
 
-    // allow only published forms
+    // allow only published surveys
     if (!record.getBool("published")) {
-      return c.json(404, { error: "Form not found" });
+      return c.json(404, { error: "Survey not found" });
     }
 
     // return only the JSON data field
     return c.json(200, record.get("data"));
   } catch (err) {
-    return c.json(404, { error: "Form not found" });
+    return c.json(404, { error: "Survey not found" });
   }
 });
 
-routerAdd("POST", "/api/forms/public/{id}", (c) => {
+routerAdd("POST", "/api/surveys/public/{id}", (c) => {
   const { applyPublicCors } = require(__hooks + "/cors.js");
   applyPublicCors(c);
 
   const id = c.request.pathValue("id");
 
   try {
-    const form = $app.findRecordById("forms", id);
+    const survey = $app.findRecordById("surveys", id);
 
-    if (!form || !form.getBool("published")) {
-      return c.json(404, { error: "Form not found" });
+    if (!survey || !survey.getBool("published")) {
+      return c.json(404, { error: "Survey not found" });
     }
 
     let body = {};
@@ -48,8 +47,8 @@ routerAdd("POST", "/api/forms/public/{id}", (c) => {
       return c.json(400, { error: "Invalid JSON body" });
     }
 
-    if (body.formId && body.formId !== id) {
-      return c.json(400, { error: "Form id mismatch" });
+    if (body.surveyId && body.surveyId !== id) {
+      return c.json(400, { error: "Survey id mismatch" });
     }
 
     if (!Array.isArray(body.answers) || body.answers.length === 0) {
@@ -59,9 +58,9 @@ routerAdd("POST", "/api/forms/public/{id}", (c) => {
     const responsesCollection = $app.findCollectionByNameOrId("responses");
     const response = new Record(responsesCollection);
 
-    response.set("survey", form.id);
+    response.set("survey", survey.id);
     response.set("data", {
-      formId: id,
+      surveyId: id,
       languageId: body.languageId ?? null,
       answers: body.answers,
       submittedAt: new Date().toISOString(),
@@ -74,12 +73,11 @@ routerAdd("POST", "/api/forms/public/{id}", (c) => {
     $app.save(response);
 
     return c.json(201, {
-      success: true,
       id: response.id,
       success: true,
     });
   } catch (err) {
     console.log(err);
-    return c.json(500, { error: "Failed to submit form" });
+    return c.json(500, { error: "Failed to submit survey" });
   }
 });

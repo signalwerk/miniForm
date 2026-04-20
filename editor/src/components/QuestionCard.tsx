@@ -7,13 +7,13 @@ import {
   isContentBlock,
   isSingleChoiceBlock,
   isTextBlock,
-} from "../lib/form-model";
+} from "../lib/survey-model";
 import type { DropIndicatorPosition } from "../lib/dnd";
 import type {
   BlockType,
-  FormBlock,
-  FormLanguage,
-  FormTranslations,
+  SurveyBlock,
+  SurveyLanguage,
+  SurveyTranslations,
   NavigationRule,
   TranslationId,
 } from "../lib/types";
@@ -28,13 +28,13 @@ interface SectionTarget {
 
 interface BlockCardProps {
   sectionId: string;
-  block: FormBlock;
+  block: SurveyBlock;
   index: number;
   sectionTargets: SectionTarget[];
   dropIndicator: DropIndicatorPosition;
-  languages: FormLanguage[];
+  languages: SurveyLanguage[];
   defaultLanguage: string;
-  translations: FormTranslations;
+  translations: SurveyTranslations;
   onUpdateTranslation: (translationId: TranslationId, languageId: string, value: string) => void;
   onTypeChange: (value: BlockType) => void;
   onToggle: (

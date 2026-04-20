@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { getTranslationValue } from "../lib/form-model";
-import type { FormLanguage, FormTranslations, TranslationId } from "../lib/types";
+import { getTranslationValue } from "../lib/survey-model";
+import type { SurveyLanguage, SurveyTranslations, TranslationId } from "../lib/types";
 
 interface TranslationInputProps {
   id: string;
   label: string;
   translationId: TranslationId | null;
-  translations: FormTranslations;
-  languages: FormLanguage[];
+  translations: SurveyTranslations;
+  languages: SurveyLanguage[];
   defaultLanguage: string;
   placeholder: string;
   multiline?: boolean;

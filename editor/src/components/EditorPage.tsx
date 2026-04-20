@@ -13,11 +13,11 @@ import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from "react-router-dom";
 import { SectionCard } from "./BlockCard";
 import { TranslationInput } from "./TranslationInput";
-import { FORM_LOCALE_OPTIONS, createForm, validateForm, validateI18nSettings } from "../lib/form-model";
-import { formReducer, getInitialFormState } from "../lib/form-reducer";
+import { SURVEY_LOCALE_OPTIONS, createSurvey, validateSurvey, validateI18nSettings } from "../lib/survey-model";
+import { surveyReducer, getInitialSurveyState } from "../lib/survey-reducer";
 import { getDropIndicator } from "../lib/dnd";
-import { createBlankFormRecord, getForm, saveForm } from "../lib/pocketbase";
-import type { BlockType, FormDefinition, NavigationRule, TranslationId } from "../lib/types";
+import { createBlankSurveyRecord, getSurvey, saveSurvey } from "../lib/pocketbase";
+import type { BlockType, NavigationRule, SurveyDefinition, TranslationId } from "../lib/types";
 
 const getErrorMessage = (error: unknown) => {
   if (error && typeof error === "object" && "message" in error) {
@@ -30,7 +30,7 @@ const getErrorMessage = (error: unknown) => {
 export function EditorPage() {
   const navigate = useNavigate();
   const { recordId } = useParams();
-  const [form, dispatch] = useReducer(formReducer, undefined, getInitialFormState);
+  const [survey, dispatch] = useReducer(surveyReducer, undefined, getInitialSurveyState);
   const [activeRecordId, setActiveRecordId] = useState<string | null>(recordId ?? null);
   const [isReady, setIsReady] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,10 +41,10 @@ export function EditorPage() {
   const [activeSectionId, setActiveSectionId] = useState<UniqueIdentifier | null>(null);
   const [overSectionId, setOverSectionId] = useState<UniqueIdentifier | null>(null);
   const saveTimeoutRef = useRef<number | null>(null);
-  const latestFormRef = useRef<FormDefinition>(form);
-  const latestSnapshotRef = useRef(JSON.stringify(form));
-  const lastSavedSnapshotRef = useRef(JSON.stringify(form));
-  const queuedSaveRef = useRef<{ form: FormDefinition; snapshot: string } | null>(null);
+  const latestSurveyRef = useRef<SurveyDefinition>(survey);
+  const latestSnapshotRef = useRef(JSON.stringify(survey));
+  const lastSavedSnapshotRef = useRef(JSON.stringify(survey));
+  const queuedSaveRef = useRef<{ survey: SurveyDefinition; snapshot: string } | null>(null);
   const isSavingRef = useRef(false);
   const skipNavigationWarningRef = useRef(false);
 
@@ -56,21 +56,21 @@ export function EditorPage() {
     }),
   );
 
-  const sectionIds = useMemo(() => form.sections.map((section) => section.id), [form.sections]);
+  const sectionIds = useMemo(() => survey.sections.map((section) => section.id), [survey.sections]);
   const sectionTargets = useMemo(
     () =>
-      form.sections.map((section, index) => ({
+      survey.sections.map((section, index) => ({
         id: section.id,
         label: `Section ${index + 1}`,
       })),
-    [form.sections],
+    [survey.sections],
   );
 
-  const i18nIssues = useMemo(() => validateI18nSettings(form), [form]);
-  const validationIssues = useMemo(() => validateForm(form), [form]);
+  const i18nIssues = useMemo(() => validateI18nSettings(survey), [survey]);
+  const validationIssues = useMemo(() => validateSurvey(survey), [survey]);
   const blocker = useBlocker(() => hasPendingChanges && !skipNavigationWarningRef.current);
 
-  const flushAutosave = async (formToSave: FormDefinition, snapshot: string) => {
+  const flushAutosave = async (formToSave: SurveyDefinition, snapshot: string) => {
     if (!activeRecordId) {
       return;
     }
@@ -90,7 +90,7 @@ export function EditorPage() {
     }
 
     if (isSavingRef.current) {
-      queuedSaveRef.current = { form: formToSave, snapshot };
+      queuedSaveRef.current = { survey: formToSave, snapshot };
       return;
     }
 
@@ -99,7 +99,7 @@ export function EditorPage() {
     setSaveMessage("Autosaving to PocketBase...");
 
     try {
-      const result = await saveForm(formToSave, activeRecordId);
+      const result = await saveSurvey(formToSave, activeRecordId);
       setActiveRecordId(result.recordId);
       lastSavedSnapshotRef.current = snapshot;
 
@@ -107,7 +107,7 @@ export function EditorPage() {
         const nextSave = queuedSaveRef.current;
         queuedSaveRef.current = null;
         isSavingRef.current = false;
-        await flushAutosave(nextSave.form, nextSave.snapshot);
+        await flushAutosave(nextSave.survey, nextSave.snapshot);
         return;
       }
 
@@ -146,22 +146,22 @@ export function EditorPage() {
 
       if (!recordId) {
         if (!isCancelled) {
-          setLoadError("No form record was provided.");
+          setLoadError("No survey record was provided.");
           setIsLoading(false);
         }
         return;
       }
 
       try {
-        const nextForm = await getForm(recordId);
-        const snapshot = JSON.stringify(nextForm);
+        const nextSurvey = await getSurvey(recordId);
+        const snapshot = JSON.stringify(nextSurvey);
 
         if (!isCancelled) {
           dispatch({
             type: "replace",
-            payload: nextForm,
+            payload: nextSurvey,
           });
-          latestFormRef.current = nextForm;
+          latestSurveyRef.current = nextSurvey;
           latestSnapshotRef.current = snapshot;
           lastSavedSnapshotRef.current = snapshot;
           setActiveRecordId(recordId);
@@ -190,8 +190,8 @@ export function EditorPage() {
       return;
     }
 
-    const snapshot = JSON.stringify(form);
-    latestFormRef.current = form;
+    const snapshot = JSON.stringify(survey);
+    latestSurveyRef.current = survey;
     latestSnapshotRef.current = snapshot;
 
     if (snapshot === lastSavedSnapshotRef.current) {
@@ -226,7 +226,7 @@ export function EditorPage() {
 
     saveTimeoutRef.current = window.setTimeout(() => {
       saveTimeoutRef.current = null;
-      void flushAutosave(latestFormRef.current, latestSnapshotRef.current);
+      void flushAutosave(latestSurveyRef.current, latestSnapshotRef.current);
     }, 900);
 
     return () => {
@@ -235,7 +235,7 @@ export function EditorPage() {
         saveTimeoutRef.current = null;
       }
     };
-  }, [activeRecordId, form, i18nIssues, isReady]);
+  }, [activeRecordId, survey, i18nIssues, isReady]);
 
   useBeforeUnload((event) => {
     if (!hasPendingChanges) {
@@ -252,7 +252,7 @@ export function EditorPage() {
     }
 
     const shouldLeave = window.confirm(
-      "This form still has changes that have not been saved to PocketBase. Leave the editor anyway?",
+      "This survey still has changes that have not been saved to PocketBase. Leave the editor anyway?",
     );
 
     if (shouldLeave) {
@@ -263,10 +263,10 @@ export function EditorPage() {
     blocker.reset();
   }, [blocker]);
 
-  const handleNewForm = async () => {
+  const handleNewSurvey = async () => {
     if (hasPendingChanges) {
       const shouldContinue = window.confirm(
-        "This form still has changes that have not been saved to PocketBase. Create a new form and leave anyway?",
+        "This survey still has changes that have not been saved to PocketBase. Create a new survey and leave anyway?",
       );
 
       if (!shouldContinue) {
@@ -276,11 +276,11 @@ export function EditorPage() {
 
     skipNavigationWarningRef.current = true;
     setSaveState("saving");
-    setSaveMessage("Creating a new form in PocketBase...");
+    setSaveMessage("Creating a new survey in PocketBase...");
 
     try {
-      const created = await createBlankFormRecord(createForm());
-      navigate(`/forms/${created.recordId}`);
+      const created = await createBlankSurveyRecord(createSurvey());
+      navigate(`/surveys/${created.recordId}`);
     } catch (error) {
       skipNavigationWarningRef.current = false;
       setSaveState("error");
@@ -319,7 +319,7 @@ export function EditorPage() {
         <section className="panel">
           <p className="eyebrow">Step 3</p>
           <h2>Loading editor</h2>
-          <p>Fetching the form from PocketBase…</p>
+          <p>Fetching the survey from PocketBase…</p>
         </section>
       </main>
     );
@@ -330,11 +330,11 @@ export function EditorPage() {
       <main className="route-page">
         <section className="panel">
           <p className="eyebrow">Step 3</p>
-          <h2>Could not open the form</h2>
+          <h2>Could not open the survey</h2>
           <p className="status-pill status-pill--error">{loadError}</p>
           <p>
-            <Link className="text-link" to="/forms">
-              Back to forms overview
+            <Link className="text-link" to="/surveys">
+              Back to surveys overview
             </Link>
           </p>
         </section>
@@ -347,14 +347,14 @@ export function EditorPage() {
       <aside className="editor-layout__sidebar">
         <section className="panel">
           <p className="eyebrow">Step 3</p>
-          <h2>Form editor</h2>
-          <p>Edit one form at a time. Block and option text use per-field language switching.</p>
+          <h2>Survey editor</h2>
+          <p>Edit one survey at a time. Block and option text use per-field language switching.</p>
           <div className="button-group">
-            <Link className="app-nav__link" to="/forms">
-              Back to forms
+            <Link className="app-nav__link" to="/surveys">
+              Back to surveys
             </Link>
-            <button type="button" className="button button--secondary" onClick={() => void handleNewForm()}>
-              New form
+            <button type="button" className="button button--secondary" onClick={() => void handleNewSurvey()}>
+              New survey
             </button>
           </div>
         </section>
@@ -382,28 +382,28 @@ export function EditorPage() {
         <section className="panel panel--hero">
           <div className="panel__header">
             <div>
-              <p className="eyebrow">Form settings</p>
-              <h2>{form.title || "Untitled form"}</h2>
+              <p className="eyebrow">Survey settings</p>
+              <h2>{survey.title || "Untitled survey"}</h2>
             </div>
 
             <div className="button-group">
-              <button type="button" className="button button--secondary" onClick={() => void handleNewForm()}>
-                New form
+              <button type="button" className="button button--secondary" onClick={() => void handleNewSurvey()}>
+                New survey
               </button>
             </div>
           </div>
 
           <div className="field-grid">
             <div>
-              <label htmlFor="form-title">Form title</label>
+              <label htmlFor="survey-title">Survey title</label>
               <input
-                id="form-title"
+                id="survey-title"
                 type="text"
-                value={form.title}
-                placeholder="Form title"
+                value={survey.title}
+                placeholder="Survey title"
                 onChange={(event) =>
                   dispatch({
-                    type: "set_form_field",
+                    type: "set_survey_field",
                     field: "title",
                     value: event.target.value,
                   })
@@ -413,15 +413,15 @@ export function EditorPage() {
           </div>
 
           <div>
-            <label htmlFor="form-description">Form description</label>
+            <label htmlFor="survey-description">Survey description</label>
             <textarea
-              id="form-description"
+              id="survey-description"
               rows={4}
-              value={form.description}
-              placeholder="Introduce the form and explain how sections should be used."
+              value={survey.description}
+              placeholder="Introduce the survey and explain how sections should be used."
               onChange={(event) =>
                 dispatch({
-                  type: "set_form_field",
+                  type: "set_survey_field",
                   field: "description",
                   value: event.target.value,
                 })
@@ -430,28 +430,28 @@ export function EditorPage() {
           </div>
 
           <div>
-            <label className="checkbox" htmlFor="form-published">
+            <label className="checkbox" htmlFor="survey-published">
               <input
-                id="form-published"
+                id="survey-published"
                 type="checkbox"
-                checked={form.published}
+                checked={survey.published}
                 onChange={(event) =>
                   dispatch({
-                    type: "set_form_published",
+                    type: "set_survey_published",
                     value: event.target.checked,
                   })
                 }
               />
               <span>Published</span>
             </label>
-            <p className="helper-text">Published forms can be exposed in the viewer later on.</p>
+            <p className="helper-text">Published surveys can be exposed in the viewer later on.</p>
           </div>
 
           <section className="handler-settings">
             <div className="panel__header">
               <div>
                 <p className="eyebrow">Handlers</p>
-                <h3>Form handling</h3>
+                <h3>Survey handling</h3>
                 <p className="helper-text">Configure what should happen after a submission. Only email is available for now.</p>
               </div>
               <button
@@ -467,13 +467,13 @@ export function EditorPage() {
               </button>
             </div>
 
-            {form.settings.handlers.length === 0 ? (
+            {survey.settings.handlers.length === 0 ? (
               <div className="empty-state empty-state--subtle">
                 <p>No handlers configured yet.</p>
               </div>
             ) : (
               <div className="handler-settings__list">
-                {form.settings.handlers.map((handler, index) => (
+                {survey.settings.handlers.map((handler, index) => (
                   <article key={handler.id} className="handler-settings__card">
                     <div className="handler-settings__header">
                       <div>
@@ -519,7 +519,7 @@ export function EditorPage() {
                           id={`handler-subject-${handler.id}`}
                           type="text"
                           value={handler.subject}
-                          placeholder="New form submission"
+                          placeholder="New survey submission"
                           onChange={(event) =>
                             dispatch({
                               type: "update_email_handler",
@@ -538,7 +538,7 @@ export function EditorPage() {
                         id={`handler-message-${handler.id}`}
                         rows={4}
                         value={handler.message}
-                        placeholder="Write the email body that should be used later during form handling."
+                        placeholder="Write the email body that should be used later during survey handling."
                         onChange={(event) =>
                           dispatch({
                             type: "update_email_handler",
@@ -576,7 +576,7 @@ export function EditorPage() {
             </div>
 
             <div className="language-settings__list">
-              {form.i18n.languages.map((language) => (
+              {survey.i18n.languages.map((language) => (
                 <div key={language.id} className="language-settings__row">
                   <div className="language-settings__field">
                     <label htmlFor={`language-label-${language.id}`}>Label</label>
@@ -604,11 +604,11 @@ export function EditorPage() {
                         dispatch({
                           type: "update_language_locale",
                           languageId: language.id,
-                          locale: event.target.value as (typeof FORM_LOCALE_OPTIONS)[number]["value"],
+                          locale: event.target.value as (typeof SURVEY_LOCALE_OPTIONS)[number]["value"],
                         })
                       }
                     >
-                      {FORM_LOCALE_OPTIONS.map((locale) => (
+                      {SURVEY_LOCALE_OPTIONS.map((locale) => (
                         <option key={locale.value} value={locale.value}>
                           {locale.label}
                         </option>
@@ -621,7 +621,7 @@ export function EditorPage() {
                       <input
                         type="radio"
                         name="default-language"
-                        checked={form.i18n.defaultLanguage === language.id}
+                        checked={survey.i18n.defaultLanguage === language.id}
                         onChange={() =>
                           dispatch({
                             type: "set_default_language",
@@ -636,7 +636,7 @@ export function EditorPage() {
                   <button
                     type="button"
                     className="button button--ghost button--danger"
-                    disabled={form.i18n.languages.length <= 1}
+                    disabled={survey.i18n.languages.length <= 1}
                     onClick={() =>
                       dispatch({
                         type: "delete_language",
@@ -672,22 +672,22 @@ export function EditorPage() {
         >
           <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
             <div className="block-list">
-              {form.sections.length === 0 ? (
+              {survey.sections.length === 0 ? (
                 <div className="empty-state">
                   <p className="eyebrow">No sections yet</p>
-                  <p>Add a section when you want to start structuring the form flow.</p>
+                  <p>Add a section when you want to start structuring the survey flow.</p>
                 </div>
               ) : (
-                form.sections.map((section, sectionIndex) => (
+                survey.sections.map((section, sectionIndex) => (
                   <SectionCard
                     key={section.id}
                     section={section}
                     index={sectionIndex}
                     sectionTargets={sectionTargets}
                     dropIndicator={getDropIndicator(sectionIds, section.id, activeSectionId, overSectionId)}
-                    languages={form.i18n.languages}
-                    defaultLanguage={form.i18n.defaultLanguage}
-                    translations={form.translations}
+                    languages={survey.i18n.languages}
+                    defaultLanguage={survey.i18n.defaultLanguage}
+                    translations={survey.translations}
                     onDeleteSection={() =>
                       dispatch({
                         type: "delete_section",
@@ -839,17 +839,17 @@ export function EditorPage() {
             <div>
               <p className="eyebrow">End</p>
               <h2>Thank you page</h2>
-              <p className="helper-text">This confirmation step is always shown after the form has been submitted.</p>
+              <p className="helper-text">This confirmation step is always shown after the survey has been submitted.</p>
             </div>
           </div>
 
           <TranslationInput
-            id="form-confirmation-content"
+            id="survey-confirmation-content"
             label="Confirmation content"
-            translationId={form.confirmation.content}
-            translations={form.translations}
-            languages={form.i18n.languages}
-            defaultLanguage={form.i18n.defaultLanguage}
+            translationId={survey.confirmation.content}
+            translations={survey.translations}
+            languages={survey.i18n.languages}
+            defaultLanguage={survey.i18n.defaultLanguage}
             placeholder="Thank you for your submission."
             multiline
             rows={5}

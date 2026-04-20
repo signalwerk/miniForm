@@ -12,11 +12,11 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useState } from "react";
 import { getDropIndicator } from "../lib/dnd";
-import { getTranslationValue, isSingleChoiceBlock } from "../lib/form-model";
+import { getTranslationValue, isSingleChoiceBlock } from "../lib/survey-model";
 import type {
   ChoiceBlock,
-  FormLanguage,
-  FormTranslations,
+  SurveyLanguage,
+  SurveyTranslations,
   NavigationRule,
   TranslationId,
 } from "../lib/types";
@@ -32,9 +32,9 @@ interface SectionTarget {
 interface OptionListProps {
   block: ChoiceBlock;
   sectionTargets: SectionTarget[];
-  languages: FormLanguage[];
+  languages: SurveyLanguage[];
   defaultLanguage: string;
-  translations: FormTranslations;
+  translations: SurveyTranslations;
   onAddOption: () => void;
   onUpdateTranslation: (translationId: TranslationId, languageId: string, value: string) => void;
   onToggleOther: (value: boolean) => void;
@@ -52,9 +52,9 @@ interface OptionItemProps {
   blockType: ChoiceBlock["type"];
   navigation: NavigationRule;
   sectionTargets: SectionTarget[];
-  languages: FormLanguage[];
+  languages: SurveyLanguage[];
   defaultLanguage: string;
-  translations: FormTranslations;
+  translations: SurveyTranslations;
   dropIndicator: "before" | "after" | null;
   onUpdateTranslation: (translationId: TranslationId, languageId: string, value: string) => void;
   onDeleteOption: (optionId: string) => void;

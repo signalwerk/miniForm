@@ -40,7 +40,7 @@ migrate((app) => {
       },
       {
         "cascadeDelete": false,
-        "collectionId": "mini_form_forms",
+        "collectionId": "mini_survey_surveys",
         "hidden": false,
         "id": "relation2908724220",
         "maxSelect": 1,

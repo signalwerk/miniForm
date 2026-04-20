@@ -36,7 +36,7 @@ export function AuthPage() {
         <p className="eyebrow">Step 1</p>
         <h2>Login or create an account</h2>
         <p>
-          Sign in before managing forms. PocketBase keeps each user&apos;s saved forms separate, so
+          Sign in before managing surveys. PocketBase keeps each user&apos;s saved surveys separate, so
           the next steps stay scoped to the current account.
         </p>
       </section>

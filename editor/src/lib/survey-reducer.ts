@@ -1,8 +1,8 @@
 import {
   createBlock,
   createEmailHandler,
-  createForm,
-  createFormLanguage,
+  createSurvey,
+  createSurveyLanguage,
   createNavigationRule,
   createOption,
   createSection,
@@ -16,33 +16,33 @@ import {
   isTextBlock,
   moveItem,
   normalizeBlockType,
-  normalizeForm,
-} from "./form-model";
+  normalizeSurvey,
+} from "./survey-model";
 import type {
   BlockType,
-  FormDefinition,
-  FormLocale,
-  FormSection,
+  SurveyDefinition,
+  SurveyLocale,
+  SurveySection,
   LanguageId,
   NavigationRule,
   TranslationId,
 } from "./types";
 
-export type FormAction =
-  | { type: "replace"; payload: FormDefinition }
-  | { type: "set_form_field"; field: "title" | "description"; value: string }
-  | { type: "set_form_published"; value: boolean }
+export type SurveyAction =
+  | { type: "replace"; payload: SurveyDefinition }
+  | { type: "set_survey_field"; field: "title" | "description"; value: string }
+  | { type: "set_survey_published"; value: boolean }
   | { type: "add_email_handler" }
   | { type: "update_email_handler"; handlerId: string; field: "to" | "subject" | "message"; value: string }
   | { type: "delete_handler"; handlerId: string }
   | { type: "add_language" }
   | { type: "update_language_label"; languageId: string; label: string }
-  | { type: "update_language_locale"; languageId: string; locale: FormLocale }
+  | { type: "update_language_locale"; languageId: string; locale: SurveyLocale }
   | { type: "delete_language"; languageId: string }
   | { type: "set_default_language"; languageId: string }
   | { type: "update_translation"; translationId: TranslationId; languageId: LanguageId; value: string }
   | { type: "add_section"; afterSectionId?: string }
-  | { type: "update_section"; sectionId: string; patch: Partial<FormSection> }
+  | { type: "update_section"; sectionId: string; patch: Partial<SurveySection> }
   | { type: "delete_section"; sectionId: string }
   | { type: "duplicate_section"; sectionId: string }
   | { type: "toggle_section"; sectionId: string }
@@ -69,26 +69,26 @@ export type FormAction =
   | { type: "reset" };
 
 const updateSections = (
-  form: FormDefinition,
+  survey: SurveyDefinition,
   sectionId: string,
-  updater: (section: FormSection) => FormSection,
+  updater: (section: SurveySection) => SurveySection,
 ) => ({
-  ...form,
-  sections: form.sections.map((section) => (section.id === sectionId ? updater(section) : section)),
+  ...survey,
+  sections: survey.sections.map((section) => (section.id === sectionId ? updater(section) : section)),
 });
 
-export const formReducer = (state: FormDefinition, action: FormAction): FormDefinition => {
+export const surveyReducer = (state: SurveyDefinition, action: SurveyAction): SurveyDefinition => {
   switch (action.type) {
     case "replace":
-      return normalizeForm(action.payload);
+      return normalizeSurvey(action.payload);
 
-    case "set_form_field":
+    case "set_survey_field":
       return {
         ...state,
         [action.field]: action.value,
       };
 
-    case "set_form_published":
+    case "set_survey_published":
       return {
         ...state,
         published: action.value,
@@ -129,9 +129,9 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       };
 
     case "add_language": {
-      const language = createFormLanguage(state.i18n.languages);
+      const language = createSurveyLanguage(state.i18n.languages);
 
-      return normalizeForm({
+      return normalizeSurvey({
         ...state,
         i18n: {
           ...state.i18n,
@@ -141,7 +141,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     }
 
     case "update_language_label":
-      return normalizeForm({
+      return normalizeSurvey({
         ...state,
         i18n: {
           ...state.i18n,
@@ -157,7 +157,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       });
 
     case "update_language_locale":
-      return normalizeForm({
+      return normalizeSurvey({
         ...state,
         i18n: {
           ...state.i18n,
@@ -185,7 +185,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         ]),
       );
 
-      return normalizeForm({
+      return normalizeSurvey({
         ...state,
         translations,
         i18n: {
@@ -199,7 +199,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     }
 
     case "set_default_language":
-      return normalizeForm({
+      return normalizeSurvey({
         ...state,
         i18n: {
           ...state.i18n,
@@ -229,11 +229,11 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         : state.sections.length - 1;
       const nextSections = [...state.sections];
       nextSections.splice(index + 1, 0, newSection);
-      return normalizeForm({ ...state, sections: nextSections });
+      return normalizeSurvey({ ...state, sections: nextSections });
     }
 
     case "update_section":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           ...action.patch,
@@ -241,7 +241,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
 
     case "delete_section":
-      return normalizeForm({
+      return normalizeSurvey({
         ...state,
         sections: state.sections.filter((section) => section.id !== action.sectionId),
       });
@@ -256,7 +256,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       const nextSections = [...state.sections];
       nextSections.splice(index + 1, 0, duplicated.section);
 
-      return normalizeForm({
+      return normalizeSurvey({
         ...state,
         translations: {
           ...state.translations,
@@ -267,7 +267,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     }
 
     case "toggle_section":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           isCollapsed: !section.isCollapsed,
@@ -275,7 +275,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
 
     case "move_section":
-      return normalizeForm({
+      return normalizeSurvey({
         ...state,
         sections: moveItem(state.sections, action.fromIndex, action.toIndex),
       });
@@ -288,7 +288,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
         ...(isChoiceBlock(block) ? block.options.map((option) => option.label) : []),
       ]);
 
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(
           {
             ...state,
@@ -308,7 +308,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     }
 
     case "set_block_type": {
-      const nextState = normalizeForm(
+      const nextState = normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           blocks: section.blocks.map((block) =>
@@ -340,7 +340,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     }
 
     case "set_block_toggle": {
-      const nextState = normalizeForm(
+      const nextState = normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           blocks: section.blocks.map((block) => {
@@ -447,7 +447,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     }
 
     case "delete_block":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           blocks: section.blocks.filter((block) => block.id !== action.blockId),
@@ -468,7 +468,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
 
         const duplicated = duplicateBlock(section.blocks[index], state.translations);
 
-        return normalizeForm(
+        return normalizeSurvey(
           updateSections(
             {
               ...state,
@@ -496,7 +496,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       })();
 
     case "toggle_block":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           blocks: section.blocks.map((block) =>
@@ -511,7 +511,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
 
     case "move_block":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           blocks: moveItem(section.blocks, action.fromIndex, action.toIndex),
@@ -519,7 +519,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
 
     case "set_section_rule":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           afterSection: action.rule,
@@ -529,7 +529,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     case "add_option": {
       const option = createOption();
 
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(
           {
             ...state,
@@ -555,7 +555,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
     }
 
     case "delete_option":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           blocks: section.blocks.map((block) =>
@@ -570,7 +570,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
 
     case "move_option":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           blocks: section.blocks.map((block) =>
@@ -585,7 +585,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
 
     case "set_option_rule":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           blocks: section.blocks.map((block) =>
@@ -607,7 +607,7 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
 
     case "set_other_option_rule":
-      return normalizeForm(
+      return normalizeSurvey(
         updateSections(state, action.sectionId, (section) => ({
           ...section,
           blocks: section.blocks.map((block) =>
@@ -622,11 +622,11 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       );
 
     case "reset":
-      return createForm();
+      return createSurvey();
 
     default:
       return state;
   }
 };
 
-export const getInitialFormState = () => createForm();
+export const getInitialSurveyState = () => createSurvey();

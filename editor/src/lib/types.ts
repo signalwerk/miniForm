@@ -3,21 +3,21 @@ export type BlockType = "content" | "text" | "single_choice" | "multiple_choice"
 export type NavigationMode = "next" | "section" | "submit";
 export type TranslationId = string;
 export type LanguageId = string;
-export type FormLocale = "en_US" | "de_CH" | "fr_CH" | "it_CH";
+export type SurveyLocale = "en_US" | "de_CH" | "fr_CH" | "it_CH";
 
 export interface NavigationRule {
   mode: NavigationMode;
   targetSectionId: string | null;
 }
 
-export interface FormLanguage {
+export interface SurveyLanguage {
   id: LanguageId;
   label: string;
-  locale: FormLocale;
+  locale: SurveyLocale;
 }
 
-export interface FormI18nSettings {
-  languages: FormLanguage[];
+export interface SurveyI18nSettings {
+  languages: SurveyLanguage[];
   defaultLanguage: LanguageId;
 }
 
@@ -29,19 +29,19 @@ export interface EmailHandlerSettings {
   message: string;
 }
 
-export type FormHandlerSettings = EmailHandlerSettings;
+export type SurveyHandlerSettings = EmailHandlerSettings;
 
-export interface FormSettings {
-  handlers: FormHandlerSettings[];
+export interface SurveySettings {
+  handlers: SurveyHandlerSettings[];
 }
 
-export interface FormConfirmation {
+export interface SurveyConfirmation {
   content: TranslationId;
 }
 
-export type FormTranslations = Record<TranslationId, Record<LanguageId, string>>;
+export type SurveyTranslations = Record<TranslationId, Record<LanguageId, string>>;
 
-export interface FormOption {
+export interface SurveyOption {
   id: string;
   label: TranslationId;
   navigation: NavigationRule;
@@ -71,7 +71,7 @@ export interface TextBlock extends PromptBlock {
 
 interface BaseChoiceBlock extends PromptBlock {
   required: boolean;
-  options: FormOption[];
+  options: SurveyOption[];
   allowOther: boolean;
   otherOptionLabel: TranslationId | null;
 }
@@ -89,16 +89,16 @@ export interface MultipleChoiceBlock extends BaseChoiceBlock {
 
 export type ChoiceBlock = SingleChoiceBlock | MultipleChoiceBlock;
 
-export type FormBlock = ContentBlock | TextBlock | SingleChoiceBlock | MultipleChoiceBlock;
+export type SurveyBlock = ContentBlock | TextBlock | SingleChoiceBlock | MultipleChoiceBlock;
 
-export interface FormSection {
+export interface SurveySection {
   id: string;
-  blocks: FormBlock[];
+  blocks: SurveyBlock[];
   afterSection: NavigationRule;
   isCollapsed: boolean;
 }
 
-export interface PersistedFormOption {
+export interface PersistedSurveyOption {
   id: string;
   label: TranslationId;
   navigation?: NavigationRule;
@@ -127,7 +127,7 @@ export interface PersistedTextBlock extends PersistedPromptBlock {
 
 interface BasePersistedChoiceBlock extends PersistedPromptBlock {
   required: boolean;
-  options: PersistedFormOption[];
+  options: PersistedSurveyOption[];
   allowOther: boolean;
   otherOptionLabel?: TranslationId;
 }
@@ -143,37 +143,37 @@ export interface PersistedMultipleChoiceBlock extends BasePersistedChoiceBlock {
   type: "multiple_choice";
 }
 
-export type PersistedFormBlock =
+export type PersistedSurveyBlock =
   | PersistedContentBlock
   | PersistedTextBlock
   | PersistedSingleChoiceBlock
   | PersistedMultipleChoiceBlock;
 
-export interface PersistedFormSection {
+export interface PersistedSurveySection {
   id: string;
-  blocks: PersistedFormBlock[];
+  blocks: PersistedSurveyBlock[];
   afterSection: NavigationRule;
 }
 
-export interface FormDefinition {
+export interface SurveyDefinition {
   title: string;
   description: string;
   published: boolean;
-  settings: FormSettings;
-  confirmation: FormConfirmation;
-  i18n: FormI18nSettings;
-  translations: FormTranslations;
-  sections: FormSection[];
+  settings: SurveySettings;
+  confirmation: SurveyConfirmation;
+  i18n: SurveyI18nSettings;
+  translations: SurveyTranslations;
+  sections: SurveySection[];
 }
 
-export interface PersistedFormDefinition {
-  confirmation: FormConfirmation;
-  i18n: FormI18nSettings;
-  translations: FormTranslations;
-  sections: PersistedFormSection[];
+export interface PersistedSurveyDefinition {
+  confirmation: SurveyConfirmation;
+  i18n: SurveyI18nSettings;
+  translations: SurveyTranslations;
+  sections: PersistedSurveySection[];
 }
 
-export interface FormSummary {
+export interface SurveySummary {
   recordId: string;
   title: string;
   updated: string;

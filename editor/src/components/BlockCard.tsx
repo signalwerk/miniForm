@@ -14,9 +14,9 @@ import { useMemo, useState } from "react";
 import { getDropIndicator, type DropIndicatorPosition } from "../lib/dnd";
 import type {
   BlockType,
-  FormLanguage,
-  FormSection,
-  FormTranslations,
+  SurveyLanguage,
+  SurveySection,
+  SurveyTranslations,
   NavigationRule,
   TranslationId,
 } from "../lib/types";
@@ -30,13 +30,13 @@ interface SectionTarget {
 }
 
 interface SectionCardProps {
-  section: FormSection;
+  section: SurveySection;
   index: number;
   sectionTargets: SectionTarget[];
   dropIndicator: DropIndicatorPosition;
-  languages: FormLanguage[];
+  languages: SurveyLanguage[];
   defaultLanguage: string;
-  translations: FormTranslations;
+  translations: SurveyTranslations;
   onDeleteSection: () => void;
   onDuplicateSection: () => void;
   onToggleSection: () => void;

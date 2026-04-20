@@ -2,8 +2,8 @@
 migrate(
   (app) => {
     const collection = new Collection({
-      id: "mini_form_forms",
-      name: "forms",
+      id: "mini_survey_surveys",
+      name: "surveys",
       type: "base",
       system: false,
       fields: [
@@ -45,7 +45,7 @@ migrate(
           "cascadeDelete": false,
           "collectionId": "_pb_users_auth_",
           "hidden": false,
-          id: "forms_owner",
+          id: "surveys_owner",
           "maxSelect": 1,
           "minSelect": 0,
           displayFields: ["name", "email"],
@@ -57,7 +57,7 @@ migrate(
         },
         {
           system: false,
-          id: "forms_title",
+          id: "surveys_title",
           name: "title",
           type: "text",
           required: true,
@@ -71,7 +71,7 @@ migrate(
         },
         {
           system: false,
-          id: "forms_description",
+          id: "surveys_description",
           name: "description",
           type: "text",
           required: false,
@@ -85,7 +85,7 @@ migrate(
         },
         {
           system: false,
-          id: "forms_publish",
+          id: "surveys_publish",
           name: "published",
           type: "bool",
           required: false,
@@ -94,7 +94,7 @@ migrate(
         },
         {
           system: false,
-          id: "forms_data",
+          id: "surveys_data",
           name: "data",
           type: "json",
           required: true,
@@ -106,7 +106,7 @@ migrate(
         },
         {
           system: false,
-          id: "forms_setjson",
+          id: "surveys_setjson",
           name: "settings",
           type: "json",
           required: false,
@@ -117,7 +117,7 @@ migrate(
           },
         }
       ],
-      indexes: ["CREATE INDEX `idx_forms_owner` ON `forms` (`owner`)"],
+      indexes: ["CREATE INDEX `idx_surveys_owner` ON `surveys` (`owner`)"],
       listRule: "@request.auth.id != '' && owner = @request.auth.id",
       viewRule: "@request.auth.id != '' && owner = @request.auth.id",
       createRule: "@request.auth.id != '' && owner = @request.auth.id",
@@ -129,7 +129,7 @@ migrate(
     return app.save(collection);
   },
   (app) => {
-    const collection = app.findCollectionByNameOrId("forms");
+    const collection = app.findCollectionByNameOrId("surveys");
 
     return app.delete(collection);
   },
