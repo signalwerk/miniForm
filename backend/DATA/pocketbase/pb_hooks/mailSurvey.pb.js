@@ -78,20 +78,6 @@ onRecordAfterCreateSuccess((e) => {
         .replace(/'/g, "&#39;");
     }
 
-    const answersText = answers
-      .map((a) => {
-        const label = a?.label || a?.id || "Field";
-        const value =
-          a?.value === null || a?.value === undefined || a?.value === ""
-            ? "-"
-            : typeof a.value === "object"
-              ? JSON.stringify(a.value, null, 2)
-              : String(a.value);
-
-        return `${label}\n${value}`;
-      })
-      .join("\n\n");
-
     const answersHtml = answers.length
       ? answers
           .map((a) => {
@@ -114,9 +100,7 @@ onRecordAfterCreateSuccess((e) => {
               <h2 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 600;">
                 ${label}
               </h2>
-              <div style="margin: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">
-                ${value}
-              </div>
+              <div style="margin: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">${value}</div>
             </section>
           `;
           })
@@ -146,38 +130,25 @@ onRecordAfterCreateSuccess((e) => {
           `New form response: ${form.get("title") || form.id}`;
         const intro = handler.message || "A new form response was submitted.";
 
-        const textBody = [
-          intro,
-          "",
-          `Form: ${form.get("title") || form.id}`,
-          `Form ID: ${responseData.formId}`,
-          `Response ID: ${record.id}`,
-          responseData.languageId
-            ? `Language ID: ${responseData.languageId}`
-            : null,
-          "",
-          answersText,
-        ]
-          .filter(Boolean)
-          .join("\n");
-
         const htmlBody = `
           <!doctype html>
           <html>
             <body style="margin:0; padding:24px; font-family: Arial, Helvetica, sans-serif; color:#111;">
-              <div style="max-width:640px;">
+              <div style="max-width:640px;margin:0 auto;">
                 <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
                   ${escapeHtml(intro)}
                 </p>
 
-                <div style="margin: 0 0 24px 0; font-size: 13px; line-height: 1.5;">
+                ${answersHtml}
+
+                <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;" />
+
+                <div style="margin: 0 0 24px 0; font-size: 8px; line-height: 1.5;">
                   <div><strong>Form:</strong> ${escapeHtml(form.get("title") || form.id)}</div>
                   <div><strong>Form ID:</strong> ${escapeHtml(responseData.formId)}</div>
                   <div><strong>Response ID:</strong> ${escapeHtml(record.id)}</div>
                   ${responseData.languageId ? `<div><strong>Language ID:</strong> ${escapeHtml(responseData.languageId)}</div>` : ""}
                 </div>
-
-                ${answersHtml}
               </div>
             </body>
           </html>
@@ -190,7 +161,6 @@ onRecordAfterCreateSuccess((e) => {
           },
           to: [{ address: handler.to }],
           subject,
-          text: textBody,
           html: htmlBody,
         });
 
