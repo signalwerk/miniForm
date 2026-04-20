@@ -9,7 +9,8 @@ type MarkdownInlineNode =
 
 type MarkdownBlockNode =
   | { type: "paragraph"; children: MarkdownInlineNode[] }
-  | { type: "heading"; depth: 1 | 2 | 3; children: MarkdownInlineNode[] };
+  | { type: "heading"; depth: 1 | 2 | 3; children: MarkdownInlineNode[] }
+  | { type: "unorderedList"; items: MarkdownInlineNode[][] };
 
 const isBlank = (line: string) => {
   for (let index = 0; index < line.length; index += 1) {
@@ -158,6 +159,25 @@ const parseHeading = (line: string): MarkdownBlockNode | null => {
   };
 };
 
+const getUnorderedListItemContent = (line: string): string | null => {
+  let index = 0;
+
+  while (index < line.length && (line[index] === " " || line[index] === "\t")) {
+    index += 1;
+  }
+
+  const marker = line[index];
+
+  if ((marker !== "-" && marker !== "*") || line[index + 1] !== " ") {
+    return null;
+  }
+
+  return line.slice(index + 2);
+};
+
+const isUnorderedListItem = (line: string) =>
+  getUnorderedListItemContent(line) !== null;
+
 export const fromMarkdown = (markdown: string): MarkdownBlockNode[] => {
   const lines = markdown.replace(/\r\n/g, "\n").split("\n");
   const nodes: MarkdownBlockNode[] = [];
@@ -179,9 +199,48 @@ export const fromMarkdown = (markdown: string): MarkdownBlockNode[] => {
       continue;
     }
 
+    if (isUnorderedListItem(line)) {
+      const items: MarkdownInlineNode[][] = [];
+
+      while (index < lines.length) {
+        const itemContent = getUnorderedListItemContent(lines[index]);
+
+        if (itemContent === null) {
+          break;
+        }
+
+        const itemLines = [itemContent];
+        index += 1;
+
+        while (
+          index < lines.length &&
+          !isBlank(lines[index]) &&
+          !parseHeading(lines[index]) &&
+          !isUnorderedListItem(lines[index])
+        ) {
+          itemLines.push(lines[index].trim());
+          index += 1;
+        }
+
+        items.push(parseInlines(itemLines.join(" ")));
+      }
+
+      nodes.push({
+        type: "unorderedList",
+        items,
+      });
+
+      continue;
+    }
+
     const paragraphLines: string[] = [];
 
-    while (index < lines.length && !isBlank(lines[index]) && !parseHeading(lines[index])) {
+    while (
+      index < lines.length &&
+      !isBlank(lines[index]) &&
+      !parseHeading(lines[index]) &&
+      !isUnorderedListItem(lines[index])
+    ) {
       paragraphLines.push(lines[index]);
       index += 1;
     }
@@ -232,7 +291,19 @@ export const renderMarkdown = (markdown: string, keyPrefix = "md") =>
         }
 
         return <h3 key={key}>{renderInlineNodes(node.children, key)}</h3>;
+
       case "paragraph":
         return <p key={key}>{renderInlineNodes(node.children, key)}</p>;
+
+      case "unorderedList":
+        return (
+          <ul key={key}>
+            {node.items.map((item, itemIndex) => (
+              <li key={`${key}-${itemIndex}`}>
+                {renderInlineNodes(item, `${key}-${itemIndex}`)}
+              </li>
+            ))}
+          </ul>
+        );
     }
   });

@@ -61,6 +61,15 @@ body {
   text-shadow: none;
 }
 
+strong {
+  font-weight: 700;
+}
+
+em {
+  font-weight: 700;
+  font-style: normal;
+}
+
 main {
   width: 92%;
   max-width: 48rem;
