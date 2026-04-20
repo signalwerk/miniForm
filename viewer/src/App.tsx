@@ -95,17 +95,29 @@ interface TextAnswer {
 interface SingleChoiceAnswer {
   type: "single_choice";
   selectedOptionId: string | null;
+  isOtherSelected: boolean;
   otherValue: string;
 }
 
 interface MultipleChoiceAnswer {
   type: "multiple_choice";
   selectedOptionIds: string[];
+  isOtherSelected: boolean;
   otherValue: string;
 }
 
 type BlockAnswer = TextAnswer | SingleChoiceAnswer | MultipleChoiceAnswer;
 type AnswersState = Record<string, BlockAnswer>;
+type ViewerStep = { kind: "section"; sectionId: string } | { kind: "confirmation" };
+
+interface SubmissionAnswer {
+  id: string;
+  key: string;
+  label: string;
+  value: string | string[];
+}
+
+const OTHER_OPTION_VALUE = "__other__";
 
 const resolveApiBaseUrl = () => {
   const fromEnv = import.meta.env.VITE_POCKETBASE_URL;
@@ -128,8 +140,8 @@ const getTranslation = (form: ViewerForm, translationId: string | undefined, lan
   return form.translations[translationId]?.[languageId] ?? "";
 };
 
-const isTextBlock = (block: ViewerBlock): block is ViewerTextBlock => block.type === "text";
 const isContentBlock = (block: ViewerBlock): block is ViewerContentBlock => block.type === "content";
+const isTextBlock = (block: ViewerBlock): block is ViewerTextBlock => block.type === "text";
 const isSingleChoiceBlock = (block: ViewerBlock): block is ViewerSingleChoiceBlock => block.type === "single_choice";
 const isMultipleChoiceBlock = (block: ViewerBlock): block is ViewerMultipleChoiceBlock => block.type === "multiple_choice";
 
@@ -145,6 +157,7 @@ const createInitialAnswer = (block: ViewerBlock): BlockAnswer | null => {
     return {
       type: "single_choice",
       selectedOptionId: null,
+      isOtherSelected: false,
       otherValue: "",
     };
   }
@@ -153,6 +166,7 @@ const createInitialAnswer = (block: ViewerBlock): BlockAnswer | null => {
     return {
       type: "multiple_choice",
       selectedOptionIds: [],
+      isOtherSelected: false,
       otherValue: "",
     };
   }
@@ -179,7 +193,7 @@ const normalizeAnswers = (form: ViewerForm, currentAnswers: AnswersState) => {
 
       if (currentAnswer.type === "single_choice") {
         if (!isSingleChoiceBlock(block)) {
-          nextAnswers[block.id] = createInitialAnswer(block) ?? currentAnswer;
+          nextAnswers[block.id] = initialAnswer;
           return;
         }
 
@@ -196,7 +210,7 @@ const normalizeAnswers = (form: ViewerForm, currentAnswers: AnswersState) => {
 
       if (currentAnswer.type === "multiple_choice") {
         if (!isMultipleChoiceBlock(block)) {
-          nextAnswers[block.id] = createInitialAnswer(block) ?? currentAnswer;
+          nextAnswers[block.id] = initialAnswer;
           return;
         }
 
@@ -215,11 +229,10 @@ const normalizeAnswers = (form: ViewerForm, currentAnswers: AnswersState) => {
   return nextAnswers;
 };
 
-const getNextTarget = (
-  form: ViewerForm,
-  currentSectionIndex: number,
-  rule: NavigationRule,
-): { kind: "section"; sectionId: string } | { kind: "confirmation" } => {
+const getSectionById = (form: ViewerForm, sectionId: string | null) =>
+  sectionId ? form.sections.find((section) => section.id === sectionId) ?? null : null;
+
+const getNextStepFromRule = (form: ViewerForm, currentSectionIndex: number, rule: NavigationRule): ViewerStep => {
   if (rule.mode === "submit") {
     return { kind: "confirmation" };
   }
@@ -237,29 +250,200 @@ const getNextTarget = (
   return { kind: "section", sectionId: nextSection.id };
 };
 
-const getSingleChoiceNavigation = (
-  form: ViewerForm,
-  currentSectionIndex: number,
-  block: ViewerSingleChoiceBlock,
-  answer: SingleChoiceAnswer,
-) => {
-  if (!block.routeByAnswer) {
-    return getNextTarget(form, currentSectionIndex, form.sections[currentSectionIndex].afterSection);
+const getSectionNextStep = (form: ViewerForm, currentSectionIndex: number, answers: AnswersState): ViewerStep => {
+  const section = form.sections[currentSectionIndex];
+
+  if (!section) {
+    return { kind: "confirmation" };
   }
 
-  if (answer.selectedOptionId) {
-    const selectedOption = block.options.find((option) => option.id === answer.selectedOptionId);
+  const routedBlock = section.blocks.find(
+    (block): block is ViewerSingleChoiceBlock => isSingleChoiceBlock(block) && block.routeByAnswer,
+  );
 
-    if (selectedOption?.navigation) {
-      return getNextTarget(form, currentSectionIndex, selectedOption.navigation);
+  if (!routedBlock) {
+    return getNextStepFromRule(form, currentSectionIndex, section.afterSection);
+  }
+
+  const answer = answers[routedBlock.id];
+
+  if (answer?.type === "single_choice") {
+    if (answer.selectedOptionId) {
+      const selectedOption = routedBlock.options.find((option) => option.id === answer.selectedOptionId);
+
+      if (selectedOption?.navigation) {
+        return getNextStepFromRule(form, currentSectionIndex, selectedOption.navigation);
+      }
+    }
+
+    if (routedBlock.allowOther && answer.isOtherSelected && routedBlock.otherOptionNavigation) {
+      return getNextStepFromRule(form, currentSectionIndex, routedBlock.otherOptionNavigation);
     }
   }
 
-  if (block.allowOther && !answer.selectedOptionId && answer.otherValue.trim() && block.otherOptionNavigation) {
-    return getNextTarget(form, currentSectionIndex, block.otherOptionNavigation);
+  return getNextStepFromRule(form, currentSectionIndex, section.afterSection);
+};
+
+const getAccessibleSectionIds = (form: ViewerForm, answers: AnswersState) => {
+  const accessibleSectionIds: string[] = [];
+
+  if (form.sections.length === 0) {
+    return accessibleSectionIds;
   }
 
-  return getNextTarget(form, currentSectionIndex, form.sections[currentSectionIndex].afterSection);
+  let currentSectionIndex = 0;
+  const seenSectionIds = new Set<string>();
+
+  while (currentSectionIndex >= 0 && currentSectionIndex < form.sections.length) {
+    const currentSection = form.sections[currentSectionIndex];
+
+    if (seenSectionIds.has(currentSection.id)) {
+      break;
+    }
+
+    seenSectionIds.add(currentSection.id);
+    accessibleSectionIds.push(currentSection.id);
+
+    const nextStep = getSectionNextStep(form, currentSectionIndex, answers);
+
+    if (nextStep.kind === "confirmation") {
+      break;
+    }
+
+    const nextSectionIndex = form.sections.findIndex((section) => section.id === nextStep.sectionId);
+
+    if (nextSectionIndex === -1) {
+      break;
+    }
+
+    currentSectionIndex = nextSectionIndex;
+  }
+
+  return accessibleSectionIds;
+};
+
+const getQuestionLabel = (
+  form: ViewerForm,
+  block: ViewerTextBlock | ViewerSingleChoiceBlock | ViewerMultipleChoiceBlock,
+  languageId: LanguageId,
+) => `${getTranslation(form, block.title, languageId)}${block.required ? " *" : ""}`;
+
+const validateSection = (section: ViewerSection | null, answers: AnswersState) => {
+  if (!section) {
+    return [];
+  }
+
+  const missingBlockIds: string[] = [];
+
+  section.blocks.forEach((block) => {
+    if (!("required" in block) || !block.required) {
+      return;
+    }
+
+    const answer = answers[block.id];
+
+    if (isTextBlock(block)) {
+      if (answer?.type !== "text" || !answer.value.trim()) {
+        missingBlockIds.push(block.id);
+      }
+      return;
+    }
+
+    if (isSingleChoiceBlock(block)) {
+      const hasOption = answer?.type === "single_choice" && answer.selectedOptionId !== null;
+      const hasOther =
+        answer?.type === "single_choice" && answer.isOtherSelected && answer.otherValue.trim().length > 0;
+
+      if (!hasOption && !hasOther) {
+        missingBlockIds.push(block.id);
+      }
+      return;
+    }
+
+    if (isMultipleChoiceBlock(block)) {
+      const hasOptions =
+        answer?.type === "multiple_choice" && answer.selectedOptionIds.length > 0;
+      const hasOther =
+        answer?.type === "multiple_choice" && answer.isOtherSelected && answer.otherValue.trim().length > 0;
+
+      if (!hasOptions && !hasOther) {
+        missingBlockIds.push(block.id);
+      }
+    }
+  });
+
+  return missingBlockIds;
+};
+
+const buildSubmissionAnswers = (form: ViewerForm, answers: AnswersState, languageId: LanguageId): SubmissionAnswer[] => {
+  const accessibleSectionIds = new Set(getAccessibleSectionIds(form, answers));
+  const submissionAnswers: SubmissionAnswer[] = [];
+
+  form.sections.forEach((section) => {
+    if (!accessibleSectionIds.has(section.id)) {
+      return;
+    }
+
+    section.blocks.forEach((block) => {
+      if (isContentBlock(block)) {
+        return;
+      }
+
+      const label = getTranslation(form, block.title, languageId);
+      const answer = answers[block.id];
+
+      if (isTextBlock(block)) {
+        submissionAnswers.push({
+          id: block.id,
+          key: block.id,
+          label,
+          value: answer?.type === "text" ? answer.value : "",
+        });
+        return;
+      }
+
+      if (isSingleChoiceBlock(block)) {
+        let value = "";
+
+        if (answer?.type === "single_choice") {
+          if (answer.selectedOptionId) {
+            const selectedOption = block.options.find((option) => option.id === answer.selectedOptionId);
+            value = selectedOption ? getTranslation(form, selectedOption.label, languageId) : "";
+          } else if (answer.isOtherSelected) {
+            value = answer.otherValue;
+          }
+        }
+
+        submissionAnswers.push({
+          id: block.id,
+          key: block.id,
+          label,
+          value,
+        });
+        return;
+      }
+
+      const selectedValues =
+        answer?.type === "multiple_choice"
+          ? block.options
+              .filter((option) => answer.selectedOptionIds.includes(option.id))
+              .map((option) => getTranslation(form, option.label, languageId))
+          : [];
+
+      if (answer?.type === "multiple_choice" && answer.isOtherSelected && answer.otherValue.trim()) {
+        selectedValues.push(answer.otherValue);
+      }
+
+      submissionAnswers.push({
+        id: block.id,
+        key: block.id,
+        label,
+        value: selectedValues,
+      });
+    });
+  });
+
+  return submissionAnswers;
 };
 
 function SurveyEntryPage() {
@@ -268,10 +452,12 @@ function SurveyEntryPage() {
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState<ViewerForm | null>(null);
   const [answers, setAnswers] = useState<AnswersState>({});
-  const [currentSectionId, setCurrentSectionId] = useState<string | null>(null);
-  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [stepHistory, setStepHistory] = useState<ViewerStep[]>([]);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [missingRequiredBlockIds, setMissingRequiredBlockIds] = useState<string[]>([]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -295,16 +481,25 @@ function SurveyEntryPage() {
 
         const payload = (await response.json()) as ViewerForm;
 
-        if (!isCancelled) {
-          setForm(payload);
-          setAnswers((currentAnswers) => normalizeAnswers(payload, currentAnswers));
-          setCurrentSectionId(payload.sections[0]?.id ?? null);
-          setHasSubmitted(false);
-          setIsLoading(false);
+        if (isCancelled) {
+          return;
         }
+
+        setForm(payload);
+        setAnswers((currentAnswers) => normalizeAnswers(payload, currentAnswers));
+        setStepHistory(
+          payload.sections[0]
+            ? [{ kind: "section", sectionId: payload.sections[0].id }]
+            : [{ kind: "confirmation" }],
+        );
+        setCurrentStepIndex(0);
+        setMissingRequiredBlockIds([]);
       } catch (error) {
         if (!isCancelled) {
           setErrorMessage(error instanceof Error ? error.message : "Could not load the survey.");
+        }
+      } finally {
+        if (!isCancelled) {
           setIsLoading(false);
         }
       }
@@ -317,27 +512,45 @@ function SurveyEntryPage() {
     };
   }, [id]);
 
+  const hasPinnedLanguage = searchParams.has("lang");
+
   const activeLanguageId = useMemo(() => {
     if (!form) {
       return "";
     }
 
     const requestedLanguageId = searchParams.get("lang");
-    const languageExists = form.i18n.languages.some((language) => language.id === requestedLanguageId);
+    const requestedLanguageExists = form.i18n.languages.some((language) => language.id === requestedLanguageId);
 
-    return languageExists && requestedLanguageId ? requestedLanguageId : form.i18n.defaultLanguage;
+    return requestedLanguageExists && requestedLanguageId ? requestedLanguageId : form.i18n.defaultLanguage;
   }, [form, searchParams]);
 
+  const currentStep = stepHistory[currentStepIndex] ?? null;
+  const currentSection = useMemo(() => {
+    if (!form || !currentStep || currentStep.kind !== "section") {
+      return null;
+    }
+
+    return getSectionById(form, currentStep.sectionId);
+  }, [form, currentStep]);
+
   const currentSectionIndex = useMemo(() => {
-    if (!form || !currentSectionId) {
+    if (!form || !currentSection) {
       return -1;
     }
 
-    return form.sections.findIndex((section) => section.id === currentSectionId);
-  }, [form, currentSectionId]);
+    return form.sections.findIndex((section) => section.id === currentSection.id);
+  }, [form, currentSection]);
 
-  const currentSection =
-    form && currentSectionIndex >= 0 ? form.sections[currentSectionIndex] : null;
+  const previewNextStep =
+    form && currentSectionIndex >= 0
+      ? getSectionNextStep(form, currentSectionIndex, answers)
+      : ({ kind: "confirmation" } as const);
+
+  const clearValidationState = () => {
+    setErrorMessage("");
+    setMissingRequiredBlockIds([]);
+  };
 
   const setLanguage = (languageId: string) => {
     const nextSearchParams = new URLSearchParams(searchParams);
@@ -346,6 +559,7 @@ function SurveyEntryPage() {
   };
 
   const updateTextAnswer = (blockId: string, value: string) => {
+    clearValidationState();
     setAnswers((currentAnswers) => ({
       ...currentAnswers,
       [blockId]: {
@@ -355,7 +569,8 @@ function SurveyEntryPage() {
     }));
   };
 
-  const updateSingleChoiceAnswer = (blockId: string, selectedOptionId: string | null) => {
+  const selectSingleChoiceOption = (blockId: string, selectedOptionId: string | null) => {
+    clearValidationState();
     setAnswers((currentAnswers) => {
       const currentAnswer = currentAnswers[blockId];
 
@@ -364,6 +579,24 @@ function SurveyEntryPage() {
         [blockId]: {
           type: "single_choice",
           selectedOptionId,
+          isOtherSelected: false,
+          otherValue: currentAnswer?.type === "single_choice" ? currentAnswer.otherValue : "",
+        },
+      };
+    });
+  };
+
+  const selectSingleChoiceOther = (blockId: string) => {
+    clearValidationState();
+    setAnswers((currentAnswers) => {
+      const currentAnswer = currentAnswers[blockId];
+
+      return {
+        ...currentAnswers,
+        [blockId]: {
+          type: "single_choice",
+          selectedOptionId: null,
+          isOtherSelected: true,
           otherValue: currentAnswer?.type === "single_choice" ? currentAnswer.otherValue : "",
         },
       };
@@ -371,19 +604,22 @@ function SurveyEntryPage() {
   };
 
   const updateSingleChoiceOther = (blockId: string, value: string) => {
+    clearValidationState();
     setAnswers((currentAnswers) => {
       return {
         ...currentAnswers,
         [blockId]: {
           type: "single_choice",
           selectedOptionId: null,
+          isOtherSelected: true,
           otherValue: value,
         },
       };
     });
   };
 
-  const toggleMultipleChoiceAnswer = (blockId: string, optionId: string, checked: boolean) => {
+  const toggleMultipleChoiceOption = (blockId: string, optionId: string, checked: boolean) => {
+    clearValidationState();
     setAnswers((currentAnswers) => {
       const currentAnswer = currentAnswers[blockId];
       const selectedOptionIds =
@@ -396,13 +632,15 @@ function SurveyEntryPage() {
           selectedOptionIds: checked
             ? [...selectedOptionIds, optionId]
             : selectedOptionIds.filter((currentOptionId) => currentOptionId !== optionId),
+          isOtherSelected: currentAnswer?.type === "multiple_choice" ? currentAnswer.isOtherSelected : false,
           otherValue: currentAnswer?.type === "multiple_choice" ? currentAnswer.otherValue : "",
         },
       };
     });
   };
 
-  const updateMultipleChoiceOther = (blockId: string, value: string) => {
+  const toggleMultipleChoiceOther = (blockId: string, checked: boolean) => {
+    clearValidationState();
     setAnswers((currentAnswers) => {
       const currentAnswer = currentAnswers[blockId];
 
@@ -411,98 +649,109 @@ function SurveyEntryPage() {
         [blockId]: {
           type: "multiple_choice",
           selectedOptionIds: currentAnswer?.type === "multiple_choice" ? currentAnswer.selectedOptionIds : [],
+          isOtherSelected: checked,
+          otherValue: checked && currentAnswer?.type === "multiple_choice" ? currentAnswer.otherValue : "",
+        },
+      };
+    });
+  };
+
+  const updateMultipleChoiceOther = (blockId: string, value: string) => {
+    clearValidationState();
+    setAnswers((currentAnswers) => {
+      const currentAnswer = currentAnswers[blockId];
+
+      return {
+        ...currentAnswers,
+        [blockId]: {
+          type: "multiple_choice",
+          selectedOptionIds: currentAnswer?.type === "multiple_choice" ? currentAnswer.selectedOptionIds : [],
+          isOtherSelected: true,
           otherValue: value,
         },
       };
     });
   };
 
-  const validateCurrentSection = () => {
-    if (!currentSection || !form) {
-      return true;
+  const goBack = () => {
+    clearValidationState();
+    setCurrentStepIndex((currentIndex) => Math.max(0, currentIndex - 1));
+  };
+
+  const submitResults = async () => {
+    if (!form || !id) {
+      return false;
     }
 
-    for (const block of currentSection.blocks) {
-      if (!("required" in block) || !block.required) {
-        continue;
-      }
+    const payload = {
+      formId: id,
+      languageId: activeLanguageId,
+      answers: buildSubmissionAnswers(form, answers, activeLanguageId),
+    };
 
-      const answer = answers[block.id];
+    const response = await fetch(`${resolveApiBaseUrl()}/api/forms/public/${id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
 
-      if (isTextBlock(block)) {
-        if (answer?.type !== "text" || !answer.value.trim()) {
-          return false;
-        }
-      }
-
-      if (isSingleChoiceBlock(block)) {
-        if (answer?.type !== "single_choice") {
-          return false;
-        }
-
-        if (!answer.selectedOptionId && !(block.allowOther && answer.otherValue.trim())) {
-          return false;
-        }
-      }
-
-      if (isMultipleChoiceBlock(block)) {
-        if (answer?.type !== "multiple_choice") {
-          return false;
-        }
-
-        const hasSelectedOption = answer.selectedOptionIds.length > 0;
-        const hasOther = block.allowOther && answer.otherValue.trim().length > 0;
-
-        if (!hasSelectedOption && !hasOther) {
-          return false;
-        }
-      }
+    if (!response.ok) {
+      throw new Error("Could not submit the survey.");
     }
 
     return true;
   };
 
-  const handleSubmitSection = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmitSection = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!form || !currentSection || currentSectionIndex < 0) {
       return;
     }
 
-    if (!validateCurrentSection()) {
-      setErrorMessage("Please complete all required fields before continuing.");
+    const nextMissingRequiredBlockIds = validateSection(currentSection, answers);
+
+    if (nextMissingRequiredBlockIds.length > 0) {
+      setMissingRequiredBlockIds(nextMissingRequiredBlockIds);
+      setErrorMessage("There are missing required fields.");
       return;
     }
 
-    setErrorMessage("");
+    clearValidationState();
 
-    const routedBlock = currentSection.blocks.find(
-      (block): block is ViewerSingleChoiceBlock => isSingleChoiceBlock(block) && block.routeByAnswer,
-    );
+    const nextStep = getSectionNextStep(form, currentSectionIndex, answers);
 
-    const nextTarget =
-      routedBlock && answers[routedBlock.id]?.type === "single_choice"
-        ? getSingleChoiceNavigation(
-            form,
-            currentSectionIndex,
-            routedBlock,
-            answers[routedBlock.id] as SingleChoiceAnswer,
-          )
-        : getNextTarget(form, currentSectionIndex, currentSection.afterSection);
+    if (nextStep.kind === "confirmation") {
+      setIsSubmitting(true);
 
-    if (nextTarget.kind === "confirmation") {
-      setHasSubmitted(true);
+      try {
+        await submitResults();
+        setStepHistory((currentHistory) => [...currentHistory.slice(0, currentStepIndex + 1), nextStep]);
+        setCurrentStepIndex((currentIndex) => currentIndex + 1);
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Could not submit the survey.");
+      } finally {
+        setIsSubmitting(false);
+      }
+
       return;
     }
 
-    setCurrentSectionId(nextTarget.sectionId);
+    setStepHistory((currentHistory) => [...currentHistory.slice(0, currentStepIndex + 1), nextStep]);
+    setCurrentStepIndex((currentIndex) => currentIndex + 1);
   };
 
   if (isLoading) {
-    return <main><p>Loading survey…</p></main>;
+    return (
+      <main>
+        <p>Loading survey…</p>
+      </main>
+    );
   }
 
-  if (!form || errorMessage && !currentSection && !hasSubmitted) {
+  if (!form) {
     return (
       <main>
         <h1>Survey viewer</h1>
@@ -511,12 +760,20 @@ function SurveyEntryPage() {
     );
   }
 
-  if (hasSubmitted) {
+  if (currentStep?.kind === "confirmation") {
     return (
       <main>
         <header>
           <h1>{getTranslation(form, form.confirmation.content, activeLanguageId)}</h1>
         </header>
+
+        {currentStepIndex > 0 ? (
+          <div>
+            <button type="button" onClick={goBack}>
+              Back
+            </button>
+          </div>
+        ) : null}
       </main>
     );
   }
@@ -535,24 +792,30 @@ function SurveyEntryPage() {
       <header>
         <h1>Survey</h1>
         <p>ID: {id}</p>
-        <div>
-          <label htmlFor="viewer-language">Language</label>
-          <select
-            id="viewer-language"
-            value={activeLanguageId}
-            onChange={(event) => setLanguage(event.target.value)}
-          >
-            {form.i18n.languages.map((language) => (
-              <option key={language.id} value={language.id}>
-                {language.label}
-              </option>
-            ))}
-          </select>
-        </div>
+
+        {!hasPinnedLanguage ? (
+          <div>
+            <label htmlFor="viewer-language">Language</label>
+            <select
+              id="viewer-language"
+              value={activeLanguageId}
+              onChange={(event) => setLanguage(event.target.value)}
+            >
+              {form.i18n.languages.map((language) => (
+                <option key={language.id} value={language.id}>
+                  {language.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
       </header>
 
-      <form onSubmit={handleSubmitSection}>
+      <form onSubmit={(event) => void handleSubmitSection(event)}>
         {currentSection.blocks.map((block) => {
+          const isMissing = missingRequiredBlockIds.includes(block.id);
+          const missingStyles = isMissing ? { border: "1px solid red", padding: "0.5rem" } : undefined;
+
           if (isContentBlock(block)) {
             return (
               <section key={block.id}>
@@ -566,11 +829,12 @@ function SurveyEntryPage() {
             const value = answer?.type === "text" ? answer.value : "";
 
             return (
-              <section key={block.id}>
-                <h2>{getTranslation(form, block.title, activeLanguageId)}</h2>
+              <section key={block.id} aria-invalid={isMissing} style={missingStyles}>
+                <label htmlFor={`block-${block.id}`}>{getQuestionLabel(form, block, activeLanguageId)}</label>
                 <p>{getTranslation(form, block.description, activeLanguageId)}</p>
                 {block.shortText ? (
                   <input
+                    id={`block-${block.id}`}
                     type="text"
                     value={value}
                     placeholder={getTranslation(form, block.placeholder, activeLanguageId)}
@@ -578,6 +842,7 @@ function SurveyEntryPage() {
                   />
                 ) : (
                   <textarea
+                    id={`block-${block.id}`}
                     rows={5}
                     value={value}
                     placeholder={getTranslation(form, block.placeholder, activeLanguageId)}
@@ -592,93 +857,141 @@ function SurveyEntryPage() {
             const answer =
               answers[block.id]?.type === "single_choice"
                 ? (answers[block.id] as SingleChoiceAnswer)
-                : { type: "single_choice", selectedOptionId: null, otherValue: "" };
+                : {
+                    type: "single_choice" as const,
+                    selectedOptionId: null,
+                    isOtherSelected: false,
+                    otherValue: "",
+                  };
 
             return (
-              <section key={block.id}>
-                <h2>{getTranslation(form, block.title, activeLanguageId)}</h2>
-                <p>{getTranslation(form, block.description, activeLanguageId)}</p>
+              <section key={block.id} aria-invalid={isMissing} style={missingStyles}>
+                <fieldset>
+                  <legend>{getQuestionLabel(form, block, activeLanguageId)}</legend>
+                  <p>{getTranslation(form, block.description, activeLanguageId)}</p>
 
-                {block.showAsDropdown ? (
-                  <select
-                    value={answer.selectedOptionId ?? ""}
-                    onChange={(event) => updateSingleChoiceAnswer(block.id, event.target.value || null)}
-                  >
-                    <option value="">Select an option</option>
-                    {block.options.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {getTranslation(form, option.label, activeLanguageId)}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <fieldset>
-                    <legend>{getTranslation(form, block.title, activeLanguageId)}</legend>
-                    {block.options.map((option) => (
-                      <label key={option.id}>
-                        <input
-                          type="radio"
-                          name={`block-${block.id}`}
-                          checked={answer.selectedOptionId === option.id}
-                          onChange={() => updateSingleChoiceAnswer(block.id, option.id)}
-                        />
-                        <span>{getTranslation(form, option.label, activeLanguageId)}</span>
-                      </label>
-                    ))}
-                    {block.allowOther ? (
-                      <label>
-                        <input
-                          type="radio"
-                          name={`block-${block.id}`}
-                          checked={!answer.selectedOptionId && answer.otherValue.trim().length > 0}
-                          onChange={() => updateSingleChoiceAnswer(block.id, null)}
-                        />
-                        <span>{getTranslation(form, block.otherOptionLabel, activeLanguageId)}</span>
+                  {block.showAsDropdown ? (
+                    <>
+                      <select
+                        value={answer.isOtherSelected ? OTHER_OPTION_VALUE : answer.selectedOptionId ?? ""}
+                        onChange={(event) => {
+                          if (event.target.value === OTHER_OPTION_VALUE) {
+                            selectSingleChoiceOther(block.id);
+                            return;
+                          }
+
+                          selectSingleChoiceOption(block.id, event.target.value || null);
+                        }}
+                      >
+                        <option value="">Select an option</option>
+                        {block.options.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {getTranslation(form, option.label, activeLanguageId)}
+                          </option>
+                        ))}
+                        {block.allowOther ? (
+                          <option value={OTHER_OPTION_VALUE}>
+                            {getTranslation(form, block.otherOptionLabel, activeLanguageId)}
+                          </option>
+                        ) : null}
+                      </select>
+
+                      {block.allowOther && answer.isOtherSelected ? (
                         <input
                           type="text"
                           value={answer.otherValue}
                           onChange={(event) => updateSingleChoiceOther(block.id, event.target.value)}
                         />
-                      </label>
-                    ) : null}
-                  </fieldset>
-                )}
+                      ) : null}
+                    </>
+                  ) : (
+                    <>
+                      {block.options.map((option) => (
+                        <label key={option.id}>
+                          <input
+                            type="radio"
+                            name={`block-${block.id}`}
+                            checked={!answer.isOtherSelected && answer.selectedOptionId === option.id}
+                            onChange={() => selectSingleChoiceOption(block.id, option.id)}
+                          />
+                          <span>{getTranslation(form, option.label, activeLanguageId)}</span>
+                        </label>
+                      ))}
+
+                      {block.allowOther ? (
+                        <>
+                          <label>
+                            <input
+                              type="radio"
+                              name={`block-${block.id}`}
+                              checked={answer.isOtherSelected}
+                              onChange={() => selectSingleChoiceOther(block.id)}
+                            />
+                            <span>{getTranslation(form, block.otherOptionLabel, activeLanguageId)}</span>
+                          </label>
+
+                          {answer.isOtherSelected ? (
+                            <input
+                              type="text"
+                              value={answer.otherValue}
+                              onChange={(event) => updateSingleChoiceOther(block.id, event.target.value)}
+                            />
+                          ) : null}
+                        </>
+                      ) : null}
+                    </>
+                  )}
+                </fieldset>
               </section>
             );
           }
 
-          const answer: MultipleChoiceAnswer =
+          const answer =
             answers[block.id]?.type === "multiple_choice"
               ? (answers[block.id] as MultipleChoiceAnswer)
-              : { type: "multiple_choice", selectedOptionIds: [], otherValue: "" };
+              : {
+                  type: "multiple_choice" as const,
+                  selectedOptionIds: [],
+                  isOtherSelected: false,
+                  otherValue: "",
+                };
 
           return (
-            <section key={block.id}>
-              <h2>{getTranslation(form, block.title, activeLanguageId)}</h2>
-              <p>{getTranslation(form, block.description, activeLanguageId)}</p>
+            <section key={block.id} aria-invalid={isMissing} style={missingStyles}>
               <fieldset>
-                <legend>{getTranslation(form, block.title, activeLanguageId)}</legend>
+                <legend>{getQuestionLabel(form, block, activeLanguageId)}</legend>
+                <p>{getTranslation(form, block.description, activeLanguageId)}</p>
+
                 {block.options.map((option) => (
                   <label key={option.id}>
                     <input
                       type="checkbox"
                       checked={answer.selectedOptionIds.includes(option.id)}
-                      onChange={(event) =>
-                        toggleMultipleChoiceAnswer(block.id, option.id, event.target.checked)
-                      }
+                      onChange={(event) => toggleMultipleChoiceOption(block.id, option.id, event.target.checked)}
                     />
                     <span>{getTranslation(form, option.label, activeLanguageId)}</span>
                   </label>
                 ))}
+
                 {block.allowOther ? (
-                  <label>
-                    <span>{getTranslation(form, block.otherOptionLabel, activeLanguageId)}</span>
-                    <input
-                      type="text"
-                      value={answer.otherValue}
-                      onChange={(event) => updateMultipleChoiceOther(block.id, event.target.value)}
-                    />
-                  </label>
+                  <>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={answer.isOtherSelected}
+                        onChange={(event) => toggleMultipleChoiceOther(block.id, event.target.checked)}
+                      />
+                      <span>{getTranslation(form, block.otherOptionLabel, activeLanguageId)}</span>
+                    </label>
+
+                    {answer.isOtherSelected ? (
+                      <input
+                        type="text"
+                        value={answer.otherValue}
+                        onChange={(event) => updateMultipleChoiceOther(block.id, event.target.value)}
+                      />
+                    ) : null}
+                  </>
                 ) : null}
               </fieldset>
             </section>
@@ -688,8 +1001,14 @@ function SurveyEntryPage() {
         {errorMessage ? <p>{errorMessage}</p> : null}
 
         <div>
-          <button type="submit">
-            {currentSection.afterSection.mode === "submit" ? "Submit" : "Continue"}
+          {currentStepIndex > 0 ? (
+            <button type="button" onClick={goBack}>
+              Back
+            </button>
+          ) : null}
+
+          <button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Submitting..." : previewNextStep.kind === "confirmation" ? "Submit" : "Continue"}
           </button>
         </div>
       </form>
