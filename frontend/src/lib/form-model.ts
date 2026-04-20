@@ -179,6 +179,7 @@ export const createSection = (): FormSection => ({
 
 export const createForm = (): FormDefinition => {
   const defaultLanguage = createLanguageId();
+  const confirmationContent = createTranslationId();
 
   return {
     title: "",
@@ -187,11 +188,14 @@ export const createForm = (): FormDefinition => {
     settings: {
       handlers: [],
     },
+    confirmation: {
+      content: confirmationContent,
+    },
     i18n: {
       languages: [{ id: defaultLanguage, label: "English" }],
       defaultLanguage,
     },
-    translations: {},
+    translations: createTranslationEntries([confirmationContent]),
     sections: [],
   };
 };
@@ -375,6 +379,8 @@ export const getTranslationValue = (
 const collectReferencedTranslationIds = (form: FormDefinition) => {
   const ids = new Set<TranslationId>();
 
+  ids.add(form.confirmation.content);
+
   form.sections.forEach((section) => {
     section.blocks.forEach((block) => {
       if (isContentBlock(block)) {
@@ -550,6 +556,12 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
     description: form.description ?? "",
     published: form.published ?? false,
     settings: normalizeFormSettings(form.settings),
+    confirmation: {
+      content:
+        form.confirmation && typeof form.confirmation.content === "string" && form.confirmation.content.length > 0
+          ? form.confirmation.content
+          : createTranslationId(),
+    },
     i18n: {
       languages: form.i18n.languages ?? [],
       defaultLanguage: form.i18n.defaultLanguage ?? "",
@@ -577,6 +589,7 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
 };
 
 export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefinition => ({
+  confirmation: form.confirmation,
   i18n: form.i18n,
   translations: form.translations,
   sections: form.sections.map(
@@ -660,6 +673,7 @@ export const hydrateFormDefinition = (
     description: metadata?.description ?? "",
     published: metadata?.published ?? false,
     settings: normalizeFormSettings(metadata?.settings),
+    confirmation: form.confirmation,
     i18n: form.i18n,
     translations: form.translations,
     sections: form.sections.map((section) => ({
@@ -880,6 +894,9 @@ export const isSupportedFormDefinition = (value: unknown): value is PersistedFor
     );
 
   return Boolean(
+    candidate.confirmation &&
+      typeof candidate.confirmation === "object" &&
+      typeof candidate.confirmation.content === "string" &&
     candidate.i18n &&
       typeof candidate.i18n === "object" &&
       Array.isArray(candidate.i18n.languages) &&

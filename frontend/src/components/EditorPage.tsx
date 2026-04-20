@@ -12,6 +12,7 @@ import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable"
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from "react-router-dom";
 import { SectionCard } from "./BlockCard";
+import { TranslationInput } from "./TranslationInput";
 import { createForm, validateForm, validateI18nSettings } from "../lib/form-model";
 import { formReducer, getInitialFormState } from "../lib/form-reducer";
 import { getDropIndicator } from "../lib/dnd";
@@ -811,6 +812,36 @@ export function EditorPage() {
         >
           Add section
         </button>
+
+        <section className="panel">
+          <div className="panel__header">
+            <div>
+              <p className="eyebrow">End</p>
+              <h2>Thank you page</h2>
+              <p className="helper-text">This confirmation step is always shown after the form has been submitted.</p>
+            </div>
+          </div>
+
+          <TranslationInput
+            id="form-confirmation-content"
+            label="Confirmation content"
+            translationId={form.confirmation.content}
+            translations={form.translations}
+            languages={form.i18n.languages}
+            defaultLanguage={form.i18n.defaultLanguage}
+            placeholder="Thank you for your submission."
+            multiline
+            rows={5}
+            onChange={(translationId: TranslationId, languageId: string, value: string) =>
+              dispatch({
+                type: "update_translation",
+                translationId,
+                languageId,
+                value,
+              })
+            }
+          />
+        </section>
       </section>
     </main>
   );

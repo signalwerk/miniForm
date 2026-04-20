@@ -33,6 +33,10 @@ export interface FormSettings {
   handlers: FormHandlerSettings[];
 }
 
+export interface FormConfirmation {
+  content: TranslationId;
+}
+
 export type FormTranslations = Record<TranslationId, Record<LanguageId, string>>;
 
 export interface FormOption {
@@ -154,12 +158,14 @@ export interface FormDefinition {
   description: string;
   published: boolean;
   settings: FormSettings;
+  confirmation: FormConfirmation;
   i18n: FormI18nSettings;
   translations: FormTranslations;
   sections: FormSection[];
 }
 
 export interface PersistedFormDefinition {
+  confirmation: FormConfirmation;
   i18n: FormI18nSettings;
   translations: FormTranslations;
   sections: PersistedFormSection[];
