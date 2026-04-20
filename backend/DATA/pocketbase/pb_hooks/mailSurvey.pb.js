@@ -14,8 +14,15 @@ onRecordAfterCreateSuccess((e) => {
   };
 
   try {
-    const responseData = record.get("data");
-    if (!responseData || !responseData.formId) {
+    const responseData = new DynamicModel({
+      formId: "",
+      languageId: "",
+      answers: [],
+    });
+
+    record.unmarshalJSONField("data", responseData);
+
+    if (!responseData.formId) {
       processing.status = "skipped";
       processing.reason = "missing data.formId";
       processing.finishedAt = new Date().toISOString();
@@ -40,7 +47,11 @@ onRecordAfterCreateSuccess((e) => {
       return;
     }
 
-    const settings = form.get("settings") || {};
+    const settings = new DynamicModel({
+      handlers: [],
+    });
+    form.unmarshalJSONField("settings", settings);
+
     const handlers = Array.isArray(settings.handlers) ? settings.handlers : [];
     const emailHandlers = handlers.filter((h) => h && h.type === "email");
 
@@ -51,14 +62,21 @@ onRecordAfterCreateSuccess((e) => {
 
       record.set("processing", processing);
       $app.save(record);
-
-      console.log("responses hook: no email handlers configured");
       return;
     }
 
     const answers = Array.isArray(responseData.answers)
       ? responseData.answers
       : [];
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
 
     const answersText = answers
       .map((a) => {
@@ -70,9 +88,40 @@ onRecordAfterCreateSuccess((e) => {
               ? JSON.stringify(a.value, null, 2)
               : String(a.value);
 
-        return `${label}: ${value}`;
+        return `${label}\n${value}`;
       })
-      .join("\n");
+      .join("\n\n");
+
+    const answersHtml = answers.length
+      ? answers
+          .map((a) => {
+            const label = escapeHtml(a?.label || a?.id || "Field");
+
+            let value = "-";
+            if (
+              a?.value !== null &&
+              a?.value !== undefined &&
+              a?.value !== ""
+            ) {
+              value =
+                typeof a.value === "object"
+                  ? escapeHtml(JSON.stringify(a.value, null, 2))
+                  : escapeHtml(String(a.value));
+            }
+
+            return `
+            <section style="margin: 0 0 20px 0;">
+              <h2 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 600;">
+                ${label}
+              </h2>
+              <div style="margin: 0; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">
+                ${value}
+              </div>
+            </section>
+          `;
+          })
+          .join("")
+      : `<p style="margin: 0; font-size: 14px; line-height: 1.5;">No answers submitted.</p>`;
 
     let successCount = 0;
     let failedCount = 0;
@@ -97,7 +146,7 @@ onRecordAfterCreateSuccess((e) => {
           `New form response: ${form.get("title") || form.id}`;
         const intro = handler.message || "A new form response was submitted.";
 
-        const body = [
+        const textBody = [
           intro,
           "",
           `Form: ${form.get("title") || form.id}`,
@@ -107,11 +156,32 @@ onRecordAfterCreateSuccess((e) => {
             ? `Language ID: ${responseData.languageId}`
             : null,
           "",
-          "Answers:",
-          answersText || "-",
+          answersText,
         ]
           .filter(Boolean)
           .join("\n");
+
+        const htmlBody = `
+          <!doctype html>
+          <html>
+            <body style="margin:0; padding:24px; font-family: Arial, Helvetica, sans-serif; color:#111;">
+              <div style="max-width:640px;">
+                <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.5;">
+                  ${escapeHtml(intro)}
+                </p>
+
+                <div style="margin: 0 0 24px 0; font-size: 13px; line-height: 1.5;">
+                  <div><strong>Form:</strong> ${escapeHtml(form.get("title") || form.id)}</div>
+                  <div><strong>Form ID:</strong> ${escapeHtml(responseData.formId)}</div>
+                  <div><strong>Response ID:</strong> ${escapeHtml(record.id)}</div>
+                  ${responseData.languageId ? `<div><strong>Language ID:</strong> ${escapeHtml(responseData.languageId)}</div>` : ""}
+                </div>
+
+                ${answersHtml}
+              </div>
+            </body>
+          </html>
+        `;
 
         const message = new MailerMessage({
           from: {
@@ -119,8 +189,9 @@ onRecordAfterCreateSuccess((e) => {
             name: $app.settings().meta.senderName,
           },
           to: [{ address: handler.to }],
-          subject: subject,
-          text: body,
+          subject,
+          text: textBody,
+          html: htmlBody,
         });
 
         $app.newMailClient().send(message);
@@ -143,7 +214,6 @@ onRecordAfterCreateSuccess((e) => {
 
       processing.handlers.push(handlerResult);
 
-      // persist after each handler so partial progress is kept
       record.set("processing", {
         ...processing,
         status: "running",
