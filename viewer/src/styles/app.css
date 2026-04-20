@@ -106,8 +106,13 @@ h3 {
   font-size: 1.2rem;
 }
 
+legend,
 label {
   font-weight: 700;
+}
+
+.survey-choice__label {
+  font-weight: 400;
 }
 
 form,

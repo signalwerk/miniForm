@@ -70,7 +70,7 @@ export function EditorPage() {
   const validationIssues = useMemo(() => validateSurvey(survey), [survey]);
   const blocker = useBlocker(() => hasPendingChanges && !skipNavigationWarningRef.current);
 
-  const flushAutosave = async (formToSave: SurveyDefinition, snapshot: string) => {
+  const flushAutosave = async (surveyToSave: SurveyDefinition, snapshot: string) => {
     if (!activeRecordId) {
       return;
     }
@@ -90,7 +90,7 @@ export function EditorPage() {
     }
 
     if (isSavingRef.current) {
-      queuedSaveRef.current = { survey: formToSave, snapshot };
+      queuedSaveRef.current = { survey: surveyToSave, snapshot };
       return;
     }
 
@@ -99,7 +99,7 @@ export function EditorPage() {
     setSaveMessage("Autosaving to PocketBase...");
 
     try {
-      const result = await saveSurvey(formToSave, activeRecordId);
+      const result = await saveSurvey(surveyToSave, activeRecordId);
       setActiveRecordId(result.recordId);
       lastSavedSnapshotRef.current = snapshot;
 
