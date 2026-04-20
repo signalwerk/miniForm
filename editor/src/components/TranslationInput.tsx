@@ -14,6 +14,7 @@ interface TranslationInputProps {
   rows?: number;
   variant?: "default" | "option";
   showMissingBadge?: boolean;
+  showMarkdownBadge?: boolean;
   onChange: (translationId: TranslationId, languageId: string, value: string) => void;
 }
 
@@ -29,6 +30,7 @@ export function TranslationInput({
   rows = 3,
   variant = "default",
   showMissingBadge = true,
+  showMarkdownBadge = false,
   onChange,
 }: TranslationInputProps) {
   const [activeLanguageId, setActiveLanguageId] = useState(defaultLanguage);
@@ -58,6 +60,7 @@ export function TranslationInput({
     >
       <div className="translation-input__header">
         <label htmlFor={id}>{label}</label>
+        {showMarkdownBadge ? <span className="translation-input__badge translation-input__badge--neutral">Markdown</span> : null}
         {isMissing && showMissingBadge ? <span className="translation-input__badge">Missing</span> : null}
       </div>
 

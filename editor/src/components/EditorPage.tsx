@@ -853,6 +853,7 @@ export function EditorPage() {
             placeholder="Thank you for your submission."
             multiline
             rows={5}
+            showMarkdownBadge
             onChange={(translationId: TranslationId, languageId: string, value: string) =>
               dispatch({
                 type: "update_translation",

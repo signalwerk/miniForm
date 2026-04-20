@@ -1084,9 +1084,10 @@ function SurveyEntryPage() {
                 <label htmlFor={`block-${block.id}`}>
                   {getQuestionLabel(form, block, activeLanguageId)}
                 </label>
-                <p>
-                  {getTranslation(form, block.description, activeLanguageId)}
-                </p>
+                {renderMarkdown(
+                  getTranslation(form, block.description, activeLanguageId),
+                  `text-description-${block.id}`,
+                )}
                 {block.shortText ? (
                   <input
                     id={`block-${block.id}`}

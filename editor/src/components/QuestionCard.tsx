@@ -166,6 +166,7 @@ export function BlockCard({
               placeholder="Add content inside this block"
               multiline
               rows={4}
+              showMarkdownBadge
               onChange={onUpdateTranslation}
             />
           ) : (
@@ -192,6 +193,7 @@ export function BlockCard({
                 multiline
                 rows={3}
                 showMissingBadge={false}
+                showMarkdownBadge
                 onChange={onUpdateTranslation}
               />
             </>

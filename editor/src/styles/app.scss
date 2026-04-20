@@ -556,6 +556,10 @@ ul {
   letter-spacing: 0.08em;
 }
 
+.translation-input__badge--neutral {
+  color: var(--color-text-muted);
+}
+
 .translation-input--missing .translation-input__field {
   border-color: var(--color-danger);
   background: rgba(157, 29, 23, 0.05);
