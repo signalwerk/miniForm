@@ -766,14 +766,6 @@ function SurveyEntryPage() {
         <header>
           <h1>{getTranslation(form, form.confirmation.content, activeLanguageId)}</h1>
         </header>
-
-        {currentStepIndex > 0 ? (
-          <div>
-            <button type="button" onClick={goBack}>
-              Back
-            </button>
-          </div>
-        ) : null}
       </main>
     );
   }
@@ -814,11 +806,11 @@ function SurveyEntryPage() {
       <form onSubmit={(event) => void handleSubmitSection(event)}>
         {currentSection.blocks.map((block) => {
           const isMissing = missingRequiredBlockIds.includes(block.id);
-          const missingStyles = isMissing ? { border: "1px solid red", padding: "0.5rem" } : undefined;
+          const blockClassName = isMissing ? "survey-block survey-block--error" : "survey-block";
 
           if (isContentBlock(block)) {
             return (
-              <section key={block.id}>
+              <section key={block.id} className="survey-block survey-block--content">
                 <p>{getTranslation(form, block.content, activeLanguageId)}</p>
               </section>
             );
@@ -829,7 +821,7 @@ function SurveyEntryPage() {
             const value = answer?.type === "text" ? answer.value : "";
 
             return (
-              <section key={block.id} aria-invalid={isMissing} style={missingStyles}>
+              <section key={block.id} className={blockClassName} aria-invalid={isMissing}>
                 <label htmlFor={`block-${block.id}`}>{getQuestionLabel(form, block, activeLanguageId)}</label>
                 <p>{getTranslation(form, block.description, activeLanguageId)}</p>
                 {block.shortText ? (
@@ -863,9 +855,13 @@ function SurveyEntryPage() {
                     isOtherSelected: false,
                     otherValue: "",
                   };
+            const isOtherFieldMissing = isMissing && answer.isOtherSelected && answer.otherValue.trim().length === 0;
+            const otherFieldClassName = isOtherFieldMissing
+              ? "survey-block__other-input survey-block__other-input--error"
+              : "survey-block__other-input";
 
             return (
-              <section key={block.id} aria-invalid={isMissing} style={missingStyles}>
+              <section key={block.id} className={blockClassName} aria-invalid={isMissing}>
                 <fieldset>
                   <legend>{getQuestionLabel(form, block, activeLanguageId)}</legend>
                   <p>{getTranslation(form, block.description, activeLanguageId)}</p>
@@ -897,11 +893,13 @@ function SurveyEntryPage() {
                       </select>
 
                       {block.allowOther && answer.isOtherSelected ? (
-                        <input
-                          type="text"
-                          value={answer.otherValue}
-                          onChange={(event) => updateSingleChoiceOther(block.id, event.target.value)}
-                        />
+                        <div className={otherFieldClassName}>
+                          <input
+                            type="text"
+                            value={answer.otherValue}
+                            onChange={(event) => updateSingleChoiceOther(block.id, event.target.value)}
+                          />
+                        </div>
                       ) : null}
                     </>
                   ) : (
@@ -931,11 +929,13 @@ function SurveyEntryPage() {
                           </label>
 
                           {answer.isOtherSelected ? (
-                            <input
-                              type="text"
-                              value={answer.otherValue}
-                              onChange={(event) => updateSingleChoiceOther(block.id, event.target.value)}
-                            />
+                            <div className={otherFieldClassName}>
+                              <input
+                                type="text"
+                                value={answer.otherValue}
+                                onChange={(event) => updateSingleChoiceOther(block.id, event.target.value)}
+                              />
+                            </div>
                           ) : null}
                         </>
                       ) : null}
@@ -957,7 +957,7 @@ function SurveyEntryPage() {
                 };
 
           return (
-            <section key={block.id} aria-invalid={isMissing} style={missingStyles}>
+            <section key={block.id} className={blockClassName} aria-invalid={isMissing}>
               <fieldset>
                 <legend>{getQuestionLabel(form, block, activeLanguageId)}</legend>
                 <p>{getTranslation(form, block.description, activeLanguageId)}</p>

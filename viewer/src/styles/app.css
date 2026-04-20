@@ -27,14 +27,14 @@
   --color-bubblegum-pink-500: #ef476f;
 
   --color-primary: var(--color-bubblegum-pink-500);
-
+  --color-error: #c80000d2;
   /* --color-text-muted: #000000;
   --color-accent: #000000;
   --color-accent-hover: #ffffff;
   --color-accent-muted: rgba(0, 0, 0, 0.15);
   --color-border: #000000;
   --color-success: #000000;
-  --color-error: #000000; */
+ */
   --font-sans: "Geist", system-ui, sans-serif;
   /* --font-mono: "IBM Plex Mono", monospace; */
   --space-sm: 0.5rem;
@@ -196,4 +196,12 @@ button:disabled {
 
 input::placeholder {
   color: var(--color-text-subtle);
+}
+
+.survey-block--error, 
+.survey-block__other-input--error {
+  border-left-color: var(--color-error);
+  border-left-width: 0.25em;
+  border-left-style: solid;
+  padding-left: 0.75em;
 }
