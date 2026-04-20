@@ -1,20 +1,16 @@
 /// <reference path="../pb_data/types.d.ts" />
 
-const applyPublicCors = (c) => {
-  c.response.header().set("Access-Control-Allow-Origin", "*");
-  c.response.header().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  c.response.header().set("Access-Control-Allow-Headers", "Content-Type");
-};
-
 routerAdd("OPTIONS", "/api/forms/public/{id}", (c) => {
+  const { applyPublicCors } = require(__hooks + "/cors.js");
   applyPublicCors(c);
   return c.noContent(204);
 });
 
 routerAdd("GET", "/api/forms/public/{id}", (c) => {
-  const id = c.request.pathValue("id");
-
+  const { applyPublicCors } = require(__hooks + "/cors.js");
   applyPublicCors(c);
+
+  const id = c.request.pathValue("id");
 
   try {
     // fetch the form record by id
@@ -33,9 +29,10 @@ routerAdd("GET", "/api/forms/public/{id}", (c) => {
 });
 
 routerAdd("POST", "/api/forms/public/{id}", (c) => {
-  const id = c.request.pathValue("id");
-
+  const { applyPublicCors } = require(__hooks + "/cors.js");
   applyPublicCors(c);
+
+  const id = c.request.pathValue("id");
 
   try {
     const form = $app.findRecordById("forms", id);
@@ -46,7 +43,7 @@ routerAdd("POST", "/api/forms/public/{id}", (c) => {
 
     let body = {};
     try {
-      body = c.requestInfo().data || {};
+      body = c.requestInfo().body || {};
     } catch (_) {
       return c.json(400, { error: "Invalid JSON body" });
     }
@@ -67,7 +64,7 @@ routerAdd("POST", "/api/forms/public/{id}", (c) => {
       formId: id,
       languageId: body.languageId ?? null,
       answers: body.answers,
-      submittedAt: (new Date()).toISOString(),
+      submittedAt: new Date().toISOString(),
     });
     response.set("processing", {
       status: "pending",
