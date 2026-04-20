@@ -104,6 +104,18 @@ migrate(
             maxSize: 0,
           },
         },
+        {
+          system: false,
+          id: "forms_setjson",
+          name: "settings",
+          type: "json",
+          required: false,
+          presentable: false,
+          hidden: false,
+          options: {
+            maxSize: 0,
+          },
+        }
       ],
       indexes: ["CREATE INDEX `idx_forms_owner` ON `forms` (`owner`)"],
       listRule: "@request.auth.id != '' && owner = @request.auth.id",

@@ -446,6 +446,114 @@ export function EditorPage() {
             <p className="helper-text">Published forms can be exposed in the viewer later on.</p>
           </div>
 
+          <section className="handler-settings">
+            <div className="panel__header">
+              <div>
+                <p className="eyebrow">Handlers</p>
+                <h3>Form handling</h3>
+                <p className="helper-text">Configure what should happen after a submission. Only email is available for now.</p>
+              </div>
+              <button
+                type="button"
+                className="button button--secondary"
+                onClick={() =>
+                  dispatch({
+                    type: "add_email_handler",
+                  })
+                }
+              >
+                Add email handler
+              </button>
+            </div>
+
+            {form.settings.handlers.length === 0 ? (
+              <div className="empty-state empty-state--subtle">
+                <p>No handlers configured yet.</p>
+              </div>
+            ) : (
+              <div className="handler-settings__list">
+                {form.settings.handlers.map((handler, index) => (
+                  <article key={handler.id} className="handler-settings__card">
+                    <div className="handler-settings__header">
+                      <div>
+                        <p className="eyebrow">Handler {index + 1}</p>
+                        <h4>Email</h4>
+                      </div>
+                      <button
+                        type="button"
+                        className="button button--ghost button--danger"
+                        onClick={() =>
+                          dispatch({
+                            type: "delete_handler",
+                            handlerId: handler.id,
+                          })
+                        }
+                      >
+                        Delete
+                      </button>
+                    </div>
+
+                    <div className="field-grid">
+                      <div>
+                        <label htmlFor={`handler-to-${handler.id}`}>To</label>
+                        <input
+                          id={`handler-to-${handler.id}`}
+                          type="text"
+                          value={handler.to}
+                          placeholder="team@example.com"
+                          onChange={(event) =>
+                            dispatch({
+                              type: "update_email_handler",
+                              handlerId: handler.id,
+                              field: "to",
+                              value: event.target.value,
+                            })
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <label htmlFor={`handler-subject-${handler.id}`}>Subject</label>
+                        <input
+                          id={`handler-subject-${handler.id}`}
+                          type="text"
+                          value={handler.subject}
+                          placeholder="New form submission"
+                          onChange={(event) =>
+                            dispatch({
+                              type: "update_email_handler",
+                              handlerId: handler.id,
+                              field: "subject",
+                              value: event.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor={`handler-message-${handler.id}`}>Message</label>
+                      <textarea
+                        id={`handler-message-${handler.id}`}
+                        rows={4}
+                        value={handler.message}
+                        placeholder="Write the email body that should be used later during form handling."
+                        onChange={(event) =>
+                          dispatch({
+                            type: "update_email_handler",
+                            handlerId: handler.id,
+                            field: "message",
+                            value: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+
           <section className="language-settings">
             <div className="panel__header">
               <div>

@@ -583,6 +583,35 @@ ul {
   border-top: 1px solid rgba(17, 17, 17, 0.12);
 }
 
+.handler-settings {
+  display: grid;
+  gap: var(--space-md);
+  padding-top: var(--space-sm);
+  border-top: 1px solid rgba(17, 17, 17, 0.12);
+}
+
+.handler-settings__list {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.handler-settings__card {
+  display: grid;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.handler-settings__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
 .language-settings__list {
   display: grid;
   gap: var(--space-sm);

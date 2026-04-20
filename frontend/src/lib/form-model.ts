@@ -2,11 +2,13 @@ import type {
   BlockType,
   ChoiceBlock,
   ContentBlock,
+  EmailHandlerSettings,
   FormDefinition,
   FormLanguage,
   FormBlock,
   FormOption,
   FormSection,
+  FormSettings,
   FormTranslations,
   MultipleChoiceBlock,
   NavigationMode,
@@ -71,6 +73,14 @@ export const createFormLanguage = (languages: FormLanguage[]): FormLanguage => {
     label: `Language ${languages.length + 1}`,
   };
 };
+
+export const createEmailHandler = (): EmailHandlerSettings => ({
+  id: createTranslationId(),
+  type: "email",
+  to: "",
+  subject: "",
+  message: "",
+});
 
 export const createTranslationEntries = (
   keys: Array<TranslationId | null | undefined>,
@@ -174,12 +184,48 @@ export const createForm = (): FormDefinition => {
     title: "",
     description: "",
     published: false,
+    settings: {
+      handlers: [],
+    },
     i18n: {
       languages: [{ id: defaultLanguage, label: "English" }],
       defaultLanguage,
     },
     translations: {},
     sections: [],
+  };
+};
+
+const normalizeFormSettings = (settings: unknown): FormSettings => {
+  if (!settings || typeof settings !== "object") {
+    return { handlers: [] };
+  }
+
+  const candidate = settings as { handlers?: unknown };
+  const handlers = Array.isArray(candidate.handlers) ? candidate.handlers : [];
+
+  return {
+    handlers: handlers.flatMap((handler) => {
+      if (!handler || typeof handler !== "object") {
+        return [];
+      }
+
+      const candidateHandler = handler as Partial<EmailHandlerSettings>;
+
+      if (candidateHandler.type !== "email") {
+        return [];
+      }
+
+      return [
+        {
+          id: typeof candidateHandler.id === "string" ? candidateHandler.id : createTranslationId(),
+          type: "email" as const,
+          to: typeof candidateHandler.to === "string" ? candidateHandler.to : "",
+          subject: typeof candidateHandler.subject === "string" ? candidateHandler.subject : "",
+          message: typeof candidateHandler.message === "string" ? candidateHandler.message : "",
+        },
+      ];
+    }),
   };
 };
 
@@ -503,6 +549,7 @@ export const normalizeForm = (form: FormDefinition): FormDefinition => {
     title: form.title ?? "",
     description: form.description ?? "",
     published: form.published ?? false,
+    settings: normalizeFormSettings(form.settings),
     i18n: {
       languages: form.i18n.languages ?? [],
       defaultLanguage: form.i18n.defaultLanguage ?? "",
@@ -606,12 +653,13 @@ export const serializeFormDefinition = (form: FormDefinition): PersistedFormDefi
 
 export const hydrateFormDefinition = (
   form: PersistedFormDefinition,
-  metadata?: { title?: string; description?: string; published?: boolean },
+  metadata?: { title?: string; description?: string; published?: boolean; settings?: unknown },
 ): FormDefinition =>
   normalizeForm({
     title: metadata?.title ?? "",
     description: metadata?.description ?? "",
     published: metadata?.published ?? false,
+    settings: normalizeFormSettings(metadata?.settings),
     i18n: form.i18n,
     translations: form.translations,
     sections: form.sections.map((section) => ({

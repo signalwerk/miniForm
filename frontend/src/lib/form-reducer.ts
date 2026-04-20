@@ -1,5 +1,6 @@
 import {
   createBlock,
+  createEmailHandler,
   createForm,
   createFormLanguage,
   createNavigationRule,
@@ -30,6 +31,9 @@ export type FormAction =
   | { type: "replace"; payload: FormDefinition }
   | { type: "set_form_field"; field: "title" | "description"; value: string }
   | { type: "set_form_published"; value: boolean }
+  | { type: "add_email_handler" }
+  | { type: "update_email_handler"; handlerId: string; field: "to" | "subject" | "message"; value: string }
+  | { type: "delete_handler"; handlerId: string }
   | { type: "add_language" }
   | { type: "update_language_label"; languageId: string; label: string }
   | { type: "delete_language"; languageId: string }
@@ -86,6 +90,40 @@ export const formReducer = (state: FormDefinition, action: FormAction): FormDefi
       return {
         ...state,
         published: action.value,
+      };
+
+    case "add_email_handler":
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          handlers: [...state.settings.handlers, createEmailHandler()],
+        },
+      };
+
+    case "update_email_handler":
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          handlers: state.settings.handlers.map((handler) =>
+            handler.id === action.handlerId
+              ? {
+                  ...handler,
+                  [action.field]: action.value,
+                }
+              : handler,
+          ),
+        },
+      };
+
+    case "delete_handler":
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          handlers: state.settings.handlers.filter((handler) => handler.id !== action.handlerId),
+        },
       };
 
     case "add_language": {

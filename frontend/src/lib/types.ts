@@ -19,6 +19,20 @@ export interface FormI18nSettings {
   defaultLanguage: LanguageId;
 }
 
+export interface EmailHandlerSettings {
+  id: string;
+  type: "email";
+  to: string;
+  subject: string;
+  message: string;
+}
+
+export type FormHandlerSettings = EmailHandlerSettings;
+
+export interface FormSettings {
+  handlers: FormHandlerSettings[];
+}
+
 export type FormTranslations = Record<TranslationId, Record<LanguageId, string>>;
 
 export interface FormOption {
@@ -139,6 +153,7 @@ export interface FormDefinition {
   title: string;
   description: string;
   published: boolean;
+  settings: FormSettings;
   i18n: FormI18nSettings;
   translations: FormTranslations;
   sections: FormSection[];

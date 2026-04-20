@@ -1,6 +1,6 @@
 import PocketBase, { type RecordModel } from "pocketbase";
 import { hydrateFormDefinition, isSupportedFormDefinition, serializeFormDefinition } from "./form-model";
-import type { FormDefinition, FormSummary, PersistedFormDefinition } from "./types";
+import type { FormDefinition, FormSettings, FormSummary, PersistedFormDefinition } from "./types";
 
 const resolvePocketBaseUrl = () => {
   const fromEnv = import.meta.env.VITE_POCKETBASE_URL;
@@ -29,6 +29,7 @@ interface FormRecord extends RecordModel {
   title: string;
   description: string;
   published?: boolean;
+  settings?: FormSettings;
   data: PersistedFormDefinition;
   updated?: string;
 }
@@ -43,6 +44,7 @@ const buildFormPayload = (form: FormDefinition, ownerId: string) => ({
   title: getPersistedTitle(form),
   description: form.description,
   published: form.published,
+  settings: form.settings,
   data: serializeFormDefinition(form),
 });
 
@@ -101,6 +103,7 @@ export const getForm = async (recordId: string): Promise<FormDefinition> => {
     title: record.title,
     description: record.description,
     published: Boolean(record.published),
+    settings: record.settings,
   });
 };
 
