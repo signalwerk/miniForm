@@ -1542,14 +1542,20 @@ function SurveyEntryPage() {
 
         {errorMessage ? <p className="error-message">{errorMessage}</p> : null}
 
-        <div>
+        <div className="survey-navigation">
           {currentStepIndex > 0 ? (
-            <button type="button" onClick={goBack}>
+            <button type="button" className="survey-navigation__button" onClick={goBack}>
               {copy.back}
             </button>
-          ) : null}
+          ) : (
+            <span className="survey-navigation__spacer" aria-hidden="true" />
+          )}
 
-          <button type="submit" disabled={isSubmitting}>
+          <button
+            type="submit"
+            className="survey-navigation__button survey-navigation__button--primary"
+            disabled={isSubmitting}
+          >
             {isSubmitting
               ? copy.submitting
               : previewNextStep.kind === "confirmation"

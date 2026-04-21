@@ -264,3 +264,29 @@ input::placeholder {
 .required-indicator {
   color: var(--color-error);
 }
+
+.survey-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.survey-navigation__spacer {
+  flex: 1 1 auto;
+}
+
+.survey-navigation__button {
+  flex: 0 0 auto;
+}
+
+.survey-navigation__button--primary {
+  margin-left: auto;
+  color: #ffffff;
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.survey-navigation__button--primary:hover:not(:disabled) {
+  filter: brightness(0.94);
+}
