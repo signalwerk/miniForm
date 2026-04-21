@@ -246,11 +246,11 @@ const getDocumentHeight = () => {
     return 0;
   }
 
-  // const mainElement = document.querySelector("#root");
+  const mainElement = document.querySelector("main");
 
-  // if (mainElement instanceof HTMLElement) {
-  //   return Math.ceil(mainElement.getBoundingClientRect().height);
-  // }
+  if (mainElement instanceof HTMLElement) {
+    return Math.ceil(mainElement.getBoundingClientRect().height);
+  }
 
   const { body, documentElement } = document;
 
@@ -844,7 +844,7 @@ function SurveyEntryPage() {
       return;
     }
 
-    // const mainElement = document.querySelector("#root");
+    const mainElement = document.querySelector("main");
     const observer =
       typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(() => {
@@ -852,9 +852,9 @@ function SurveyEntryPage() {
           })
         : null;
 
-    // if (mainElement instanceof HTMLElement) {
-    //   observer?.observe(mainElement);
-    // } else {
+    if (mainElement instanceof HTMLElement) {
+      observer?.observe(mainElement);
+    } else {
       if (document.body) {
         observer?.observe(document.body);
       }
@@ -862,7 +862,7 @@ function SurveyEntryPage() {
       if (document.documentElement) {
         observer?.observe(document.documentElement);
       }
-    // }
+    }
 
     const handleResize = () => {
       scheduleEmbeddedHeightReport();
